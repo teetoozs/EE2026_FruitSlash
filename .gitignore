@@ -1,0 +1,10 @@
+/build/
+.Xil/
+*.jou
+*.log
+*.str
+*.wdb
+*.pb
+*.bit
+*.bin
+dfx_runtime.txt
