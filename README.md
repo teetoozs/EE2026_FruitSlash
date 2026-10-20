@@ -45,6 +45,8 @@ Use Vivado 2025.2 or agree a common team version. Source
 `scripts/create_project.tcl` in Vivado, then build `fruit_slash_top`.
 The generated project is `build/vivado/fruit_slash.xpr`.
 Run `scripts/check.tcl` for simulation and RTL elaboration.
+Run `scripts/synthesize.tcl` for full technology-mapped synthesis and utilization
+reports. RTL elaboration alone does not prove the design fits the FPGA.
 Generated results stay in ignored `build/`; source files remain in the repository.
 
 Keep this repository private until course/vendor redistribution rules are checked.

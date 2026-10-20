@@ -63,3 +63,23 @@ Reloading source does not update the hardware. After functional changes, rerun
 simulation as appropriate, synthesis, implementation and Generate Bitstream,
 then program the board with the new .bit file in Hardware Manager.
 Formatting-only changes do not require reprogramming to preserve existing behaviour.
+
+### Resource-fit check after physics/rendering changes
+
+Run full synthesis to catch oversized arithmetic before implementation:
+
+```text
+vivado -mode batch -source scripts/synthesize.tcl
+```
+
+Reports and the synthesized checkpoint are in the printed build/synth_* folder.
+For a short local build path outside OneDrive, use a Vivado-enabled PowerShell:
+
+```powershell
+$env:FRUIT_SLASH_BUILD_ROOT = 'C:/FPGA/builds'
+vivado -mode batch -source scripts/synthesize.tcl
+```
+
+After pulling the shared-slicing optimization, reset the old synthesis and
+implementation runs in Vivado before rebuilding. Do not reuse the old oversized
+netlist. The top-level slicing connections changed along with the detector.

@@ -1,4 +1,4 @@
-# Interface contract v1
+# Interface contract v2
 - One 100 MHz domain for game/input/VGA logic. game_tick is an enable (~60 Hz).
 - VGA uses a 25 MHz pixel enable: 800x525 total, 640x480 active (~59.52 Hz).
 - OLED driver has a generated 6.25 MHz clock; status uses a bundled-data
@@ -9,8 +9,14 @@
 - Screen origin upper-left; positive y downward. Negative/offscreen positions legal.
 - Radius 18 pixels in starter. No fruit type bus yet: agree before adding one.
 - Physics owns active/bomb/position arrays. hit_mask is one bit per slot.
-- Hit mask is combinational from registered blade_event/coordinates plus current
-  active flags; all consumers sample it at the next 100 MHz rising edge.
+- Slice detector now takes clk/reset and returns busy. It snapshots the blade
+  segment/object bus and checks one slot in four clocks. With eight slots its
+  one-cycle accumulated hit-mask arrives 32 clocks after acceptance.
+- Do not send a blade_event while busy. Mouse packets and fallback updates are
+  naturally much farther apart than the 330 ns busy transaction at 100 MHz.
+- Top gates object game_tick while busy so slots cannot move/recycle mid-scan;
+  a coincident game tick may be skipped. Hit output is masked with current
+  active/playing flags. Reset, new round or pause aborts pending collisions.
 - Removal wins over movement; a removed slot cannot be respawned that same cycle.
 - Score adds all simultaneous fruits; lives subtract all simultaneous bomb hits.
 - Blade_event accompanies each mouse packet (or fallback update). Coordinates
