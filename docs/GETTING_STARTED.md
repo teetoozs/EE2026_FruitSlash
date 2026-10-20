@@ -23,3 +23,43 @@ git commit -m "Describe a small working change"
 git push -u origin feature/your-task
 Open a pull request to main; list tests and interface changes.
 No .bit files are merged together: all RTL connects through fruit_slash_top.
+
+## Refreshing Vivado after edits or a Git pull
+
+### Existing source files changed
+
+1. Save your changes in VS Code, or finish pulling/merging the team updates.
+2. Return to Vivado and accept any source-file reload prompt. If an editor tab
+   still shows old text, close and reopen that source tab.
+3. Refresh the compilation order in Vivado's Tcl Console if needed:
+
+```tcl
+update_compile_order -fileset sources_1
+```
+
+This updates the source hierarchy; it does not rebuild the design. You do not
+need to restart Vivado or recreate the project for ordinary source edits.
+Vivado must reference the same repository files you edit in VS Code, rather
+than an older copied set of sources.
+
+### New source files were added
+
+Use Add Sources in Vivado and leave Copy sources into project unchecked.
+Alternatively, save your work, close the current project, and rerun the setup
+script from the repository root in the Tcl Console:
+
+```tcl
+close_project
+source scripts/create_project.tcl
+```
+
+The script reopens the local project and adds the current RTL/vendor files.
+New testbenches or memory assets also need to be registered in the setup script;
+it currently adds only sim/tb_core.v as its testbench.
+
+### Update the running Basys 3 design
+
+Reloading source does not update the hardware. After functional changes, rerun
+simulation as appropriate, synthesis, implementation and Generate Bitstream,
+then program the board with the new .bit file in Hardware Manager.
+Formatting-only changes do not require reprogramming to preserve existing behaviour.
