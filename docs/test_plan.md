@@ -6,6 +6,11 @@ Run scripts/check.tcl through Vivado. tb_core verifies:
 - combo awarded once on release
 - pause, simultaneous bomb damage and round restart
 RTL elaboration additionally checks mixed-language MouseCtl/Ps2Interface binding.
+tb_geometry compares 2-slot and 8-slot shared collision scans to a 64-bit
+mathematical reference (200 randomized cases plus tangent, near-miss, zero-length,
+long-swipe and negative-coordinate cases), checks reset cancellation, and checks
+every pixel around the fruit and flash masks against the original circle equation.
+Run scripts/synthesize.tcl as well: only full synthesis reports hardware usage.
 ## Board acceptance (not yet performed)
 - VGA stable on monitor; black during blanking.
 - Wired mouse enumerates, cursor clamps to 639x479; left hold slices.

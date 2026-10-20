@@ -20,6 +20,7 @@ add_files [glob [file join $root vendor *.vhd]]
 add_files -fileset constrs_1 [file join $root constraints basys3.xdc]
 set_property top fruit_slash_top [current_fileset]
 add_files -fileset sim_1 [file join $root sim tb_core.v]
+add_files -fileset sim_1 [file join $root sim tb_geometry.v]
 set_property top tb_core [get_filesets sim_1]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
