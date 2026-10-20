@@ -59,9 +59,11 @@ module fruit_slash_top (
         .slash_active(slash_active),
         .blade_event (blade_event)
     );
-    wire [N-1:0] active, bomb, hit_mask;
+    wire [N-1:0] active, bomb, hit_mask, raw_hit_mask;
+    wire slice_busy;
     wire [N*16-1:0] positions_x, positions_y;
     wire playing, new_round;
+    assign hit_mask = raw_hit_mask & active & {N{playing}};
     wire [1:0] state, lives;
     wire [15:0] score, best_score;
     wire [7:0] combo;
@@ -88,7 +90,7 @@ module fruit_slash_top (
     ) objects (
         .clk        (clk),
         .reset      (reset || new_round),
-        .game_tick  (game_tick),
+        .game_tick  (game_tick && !slice_busy),
         .playing    (playing),
         .difficulty (sw_sync[1:0]),
         .remove_mask(hit_mask),
@@ -100,6 +102,8 @@ module fruit_slash_top (
     slice_detector #(
         .N(N)
     ) slicing (
+        .clk         (clk),
+        .reset       (reset || new_round),
         .playing     (playing),
         .blade_event (blade_event),
         .slash_active(slash_active),
@@ -110,7 +114,8 @@ module fruit_slash_top (
         .active      (active),
         .positions_x (positions_x),
         .positions_y (positions_y),
-        .hit_mask    (hit_mask)
+        .hit_mask    (raw_hit_mask),
+        .busy        (slice_busy)
     );
     wire signed [15:0] effect_x, effect_y;
     wire [5:0] ttl;

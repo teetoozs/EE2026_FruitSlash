@@ -27,14 +27,18 @@ module tb_core;
         .combo        (combo)
     );
     reg [9:0] x0 = 0, y0 = 100, x1 = 200, y1 = 100;
-    reg event_valid = 1, active_slice = 1;
-    reg  [ 1:0] active = 2'b11;
-    reg  [31:0] px = {16'd1600, 16'd1600};
-    reg  [31:0] py = {16'd3200, 16'd1600};
-    wire [ 1:0] detected;
+    reg event_valid = 0, active_slice = 1;
+    wire detector_busy;
+    reg [1:0] active = 2'b11;
+    reg [31:0] px = {16'd1600, 16'd1600};
+    reg [31:0] py = {16'd3200, 16'd1600};
+    wire [1:0] detected;
     slice_detector #(
         .N(2)
     ) detector (
+        .clk         (clk),
+        .reset       (reset),
+        .busy        (detector_busy),
         .playing     (1'b1),
         .blade_event (event_valid),
         .slash_active(active_slice),
@@ -53,20 +57,44 @@ module tb_core;
             #1;
         end
     endtask
+    task check_slice;
+        input [1:0] expected;
+        integer cycles;
+        begin
+            @(negedge clk);
+            event_valid = 1;
+            step;
+            @(negedge clk);
+            event_valid = 0;
+            cycles      = 0;
+            while (detector_busy && cycles < 20) begin
+                step;
+                cycles = cycles + 1;
+            end
+            if (cycles >= 20) $fatal(1, "Detector timeout");
+            if (detected !== expected)
+                $fatal(1, "Slice mismatch: expected %b got %b", expected, detected);
+            step;
+            if (detected !== 0) $fatal(1, "Hit mask must be one pulse");
+        end
+    endtask
+
     initial begin
-        #1;
-        if (detected !== 2'b01) $fatal(1, "Swept blade should hit only first fruit");
+        step;
+        @(negedge clk);
+        reset = 0;
+        check_slice(2'b01);
         active_slice = 0;
-        #1;
-        if (detected !== 0) $fatal(1, "Inactive blade must not hit");
+        check_slice(2'b00);
         active_slice = 1;
         x0           = 100;
         x1           = 100;
-        #1;
-        if (detected !== 2'b01) $fatal(1, "Stationary point collision failed");
+        check_slice(2'b01);
         active = 0;
-        #1;
-        if (detected !== 0) $fatal(1, "Inactive slots must not hit");
+        check_slice(2'b00);
+        active = 3;
+        @(negedge clk);
+        reset = 1;
         step;
         @(negedge clk);
         reset = 0;
