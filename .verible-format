@@ -1,0 +1,5 @@
+--indentation_spaces=4
+--column_limit=100
+--port_declarations_alignment=align
+--named_port_alignment=align
+--assignment_statement_alignment=align
