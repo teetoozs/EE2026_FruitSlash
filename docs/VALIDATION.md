@@ -41,3 +41,38 @@ OneDrive-related writable-directory errors were avoided using a local temporary
 build root. Post-synthesis DRC has DSP pipelining advisories; no resource-overuse
 errors. Placement/routing, timing closure, bitstream generation and board tests
 remain to be performed. The earlier 19 October limitations describe the old run.
+
+## Fruit halves - 26 October 2026
+
+On develop/effects, Vivado 2025.2 completed:
+- tb_effects: PASS (eight simultaneous cuts, falling/separating halves, pixel masks,
+  pause, reset/restart, bomb filtering, slot reuse, expiration and screen-edge clipping).
+- tb_core and tb_geometry: PASS.
+- Full top-level RTL elaboration: PASS, no errors or critical warnings.
+- Technology-mapped synthesis: PASS, no errors or critical warnings.
+
+Resource usage: 5,441 / 20,800 LUTs (26.16%), 2,395 / 41,600 flip-flops (5.76%),
+13 / 90 DSPs (14.44%), no block RAM and no inferred latches.
+Post-synthesis DRC reports only DSP pipelining advisories in the existing slicing engine.
+Reports are under build/synth_1792943844; regression project is build/check_1792943826.
+
+The split is vertical through the fruit centre. Each object slot owns one pair;
+a newer cut in that slot replaces its previous pair. Pause/game over freezes effects,
+and reset/new_round clears them. Cut-dependent direction, splats and explosions remain future work.
+Placement/routing, timing closure, bitstream generation and board testing were not run.
+
+## Animated juice splash - 26 October 2026
+
+Added a 24-tick orange juice burst for every fruit cut, behind intact fruit and
+falling halves. Eight droplets spread outward and drift down; the centre shrinks
+and the last eight ticks use darker colour and checkerboard fading. Each object
+slot captures its own origin and age; bombs do not spawn juice. New cuts replace
+old splashes in reused slots. Pause/game over freezes age; restart clears splashes.
+Persistent background decals and per-fruit palettes are not implemented yet.
+
+Vivado 2025.2: tb_splash, tb_effects, tb_core and tb_geometry all PASS.
+Full top-level elaboration and technology-mapped synthesis PASS with no errors or
+critical warnings. Usage: 7,448 LUTs (35.81%), 2,635 flip-flops (6.33%), 13 DSPs
+(14.44%), no inferred latches. Post-synthesis DRC has only the existing slicing
+DSP pipelining advisories. Reports: build/synth_1792944933; regression project:
+build/check_1792944910. Timing closure, bitstream and board tests remain outstanding.

@@ -27,8 +27,20 @@
 - BTNC press starts/restarts only on title/game-over. During fallback gameplay,
   BTNC held slices. SW15 resets, SW3 selects fallback, SW2 pauses, SW1:0 difficulty.
 - State encoding: 0 title, 1 play, 2 pause, 3 over.
-- Effects currently retain only first simultaneous hit for a flash. This is a
-  deliberate placeholder; final effects need a per-hit queue or independent slots.
-- Compositor priority: background, intact objects, flash, cursor, state stripe.
+- Effects capture every fruit hit into two half slots (2*i left, 2*i+1 right).
+  halves_x/halves_y are packed signed Q12.4 centres, 16 bits per piece;
+  halves_active has 2*N bits. Splits are vertical through the centre.
+  Pieces separate at +/-2 pixels/tick and accelerate downward by 0.25 pixels/tick^2.
+  A new cut in the same object slot replaces its old pair. Pieces expire after
+  90 ticks or when offscreen; pause freezes them and reset/new_round clears them.
+  The bomb input filters fruit effects; only the first simultaneous bomb gets a flash.
+- Each fruit cut also captures splash_x/splash_y (packed signed Q12.4 origins).
+  splash_active has N bits; splash_age packs 5 bits per slot, ages 0 through 23.
+  Eight droplets spread and drift down around a shrinking core, then dither/fade.
+  Effects last 24 game ticks (~0.4 seconds). New cuts replace the splash in that
+  slot, even on a coincident tick. Bombs do not create juice. Pause/game over freezes
+  the splash age; reset/new_round clears it. Current juice palette is orange.
+- Compositor priority: background, juice splashes, intact objects, fruit halves,
+  bomb flash, cursor, state stripe.
   Full planned layer order is not yet implemented.
 - Keep interface changes in this document and notify the consuming module owner.

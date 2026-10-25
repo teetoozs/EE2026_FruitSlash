@@ -119,6 +119,11 @@ module fruit_slash_top (
     );
     wire signed [15:0] effect_x, effect_y;
     wire [5:0] ttl;
+    wire [N-1:0] splash_active;
+    wire [N*16-1:0] splash_x, splash_y;
+    wire [N*5-1:0] splash_age;
+    wire [2*N-1:0] halves_active;
+    wire [2*N*16-1:0] halves_x, halves_y;
     cut_effects #(
         .N(N)
     ) effects (
@@ -127,8 +132,16 @@ module fruit_slash_top (
         .game_tick  (game_tick),
         .playing    (playing),
         .hit_mask   (hit_mask),
+        .bomb       (bomb),
         .positions_x(positions_x),
         .positions_y(positions_y),
+        .splash_active(splash_active),
+        .splash_x(splash_x),
+        .splash_y(splash_y),
+        .splash_age(splash_age),
+        .halves_active(halves_active),
+        .halves_x    (halves_x),
+        .halves_y    (halves_y),
         .effect_x   (effect_x),
         .effect_y   (effect_y),
         .ttl        (ttl)
@@ -159,6 +172,13 @@ module fruit_slash_top (
         .bomb        (bomb),
         .positions_x (positions_x),
         .positions_y (positions_y),
+        .splash_active(splash_active),
+        .splash_x(splash_x),
+        .splash_y(splash_y),
+        .splash_age(splash_age),
+        .halves_active(halves_active),
+        .halves_x    (halves_x),
+        .halves_y    (halves_y),
         .effect_x    (effect_x),
         .effect_y    (effect_y),
         .ttl         (ttl),

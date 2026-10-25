@@ -127,6 +127,13 @@ module tb_geometry;
         .effect_x    (16'sd300),
         .effect_y    (16'sd200),
         .ttl         (ttl),
+        .splash_active(1'b0),
+        .splash_x(16'd0),
+        .splash_y(16'd0),
+        .splash_age(5'd0),
+        .halves_active(2'b00),
+        .halves_x    (32'd0),
+        .halves_y    (32'd0),
         .rgb         (rgb)
     );
     integer dx, dy;

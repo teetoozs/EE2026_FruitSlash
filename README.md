@@ -30,14 +30,16 @@ four-feature submission. Advanced features are explicitly documented as TODOs.
 - Eight fruit/bomb slots with signed fixed-point projectile motion and LFSR spawning.
 - Swept-segment/circle slicing, object removal and simultaneous hit masks.
 - Score, per-stroke combo bonus, three lives, pause, restart and session best.
-- One cut flash; diagnostic OLED lives/difficulty/combo bars and seven-segment score.
+- Two falling semicircles per cut fruit, including simultaneous cuts; bomb hit flash.
+- Animated juice bursts with spreading droplets and a shrinking, fading centre.
+- Diagnostic OLED lives/difficulty/combo bars and seven-segment score.
 
 ## Not yet implemented
 
-Finished title/pause/game-over text, fonts/sprites, blade trails, directional fruit
-halves, persistent splats, bomb explosion frames, multiplier and end statistics.
-See ownership.md. Current hit-flash captures only one hit visually; scoring handles
-all hit-mask bits. Hardware acceptance and implementation timing must be checked.
+Finished title/pause/game-over text, fonts/sprites, blade trails, cut-direction-dependent fruit
+splits, persistent splats, bomb explosion frames, multiplier and end statistics.
+See ownership.md. Fruit halves support all eight hit slots; the bomb flash still captures only one
+bomb visually. A new fruit cut in a reused slot replaces its previous halves. Hardware acceptance and implementation timing must be checked.
 
 ## Build
 

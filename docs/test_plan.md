@@ -5,6 +5,12 @@ Run scripts/check.tcl through Vivado. tb_core verifies:
 - multiple fruit hits in one cycle
 - combo awarded once on release
 - pause, simultaneous bomb damage and round restart
+tb_effects verifies all eight simultaneous fruit cuts, separating/falling pieces,
+semicircle pixels, pause, reset/restart, bomb filtering, slot reuse, expiration,
+negative-coordinate rendering and blanking. It also checks splash capture, pause,
+bomb filtering, replacement and exact 24-tick expiration.
+tb_splash compares all animation ages against an independent eight-droplet pixel
+reference, checking spread, downward drift, colour fade, dithering and clipping.
 RTL elaboration additionally checks mixed-language MouseCtl/Ps2Interface binding.
 tb_geometry compares 2-slot and 8-slot shared collision scans to a 64-bit
 mathematical reference (200 randomized cases plus tangent, near-miss, zero-length,

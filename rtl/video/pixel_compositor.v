@@ -17,8 +17,28 @@ module pixel_compositor #(
     input  signed [    15:0] effect_x,
     input  signed [    15:0] effect_y,
     input         [     5:0] ttl,
+    input         [2*N-1:0] halves_active,
+    input         [2*N*16-1:0] halves_x,
+    input         [2*N*16-1:0] halves_y,
+    input         [N-1:0] splash_active,
+    input         [N*16-1:0] splash_x,
+    input         [N*16-1:0] splash_y,
+    input         [N*5-1:0] splash_age,
     output reg    [    11:0] rgb
 );
+
+    wire splash_pixel;
+    wire [11:0] splash_rgb;
+    splash_renderer #(.N(N)) juice (
+        .x(x),
+        .y(y),
+        .active(splash_active),
+        .positions_x(splash_x),
+        .positions_y(splash_y),
+        .ages(splash_age),
+        .pixel_on(splash_pixel),
+        .rgb(splash_rgb)
+    );
 
     // Exact integer circle row widths: no per-fruit pixel multipliers.
     function [4:0] extent18;
@@ -97,6 +117,7 @@ module pixel_compositor #(
     reg [16:0] effect_abs_x, effect_abs_y;
     always @(*) begin
         rgb   = y[5] ? 12'h642 : 12'h753;
+        if (splash_pixel) rgb = splash_rgb;
         qx    = 0;
         qy    = 0;
         cx    = 0;
@@ -116,6 +137,20 @@ module pixel_compositor #(
             abs_y = dy < 0 ? -dy : dy;
             if (active[i] && abs_y <= 18 && abs_x <= extent18(abs_y[4:0]))
                 rgb = bomb[i] ? 12'h111 : 12'hF40;
+        end
+        // Two complementary semicircles per fruit, drawn above intact objects.
+        for (i = 0; i < 2*N; i = i + 1) begin
+            qx = halves_x[i*16+:16];
+            qy = halves_y[i*16+:16];
+            cx = qx >>> 4;
+            cy = qy >>> 4;
+            dx = $signed({1'b0, x}) - cx;
+            dy = $signed({1'b0, y}) - cy;
+            abs_x = dx < 0 ? -dx : dx;
+            abs_y = dy < 0 ? -dy : dy;
+            if (halves_active[i] && abs_y <= 18 && abs_x <= extent18(abs_y[4:0]) &&
+                ((i % 2 == 0 && dx < 0) || (i % 2 == 1 && dx >= 0)))
+                rgb = 12'hF40;
         end
         effect_dx    = $signed({1'b0, x}) - effect_x;
         effect_dy    = $signed({1'b0, y}) - effect_y;
