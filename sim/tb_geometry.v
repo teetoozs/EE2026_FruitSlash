@@ -105,10 +105,9 @@ module tb_geometry;
         end
     endtask
 
-    // Render verification: exact original integer circle and flash masks.
+    // Render verification: exact original integer circle masks.
     reg [9:0] rx = 0, ry = 0;
     reg [15:0] rpx = 16'd1600, rpy = 16'd1600;
-    reg  [ 5:0] ttl = 0;
     wire [11:0] rgb;
     pixel_compositor #(
         .N(1)
@@ -124,9 +123,10 @@ module tb_geometry;
         .bomb        (1'b0),
         .positions_x (rpx),
         .positions_y (rpy),
-        .effect_x    (16'sd300),
-        .effect_y    (16'sd200),
-        .ttl         (ttl),
+        .explosion_active(1'b0),
+        .explosion_x(16'd0),
+        .explosion_y(16'd0),
+        .explosion_age(6'd0),
         .splash_active(1'b0),
         .splash_x(16'd0),
         .splash_y(16'd0),
@@ -202,14 +202,6 @@ module tb_geometry;
             #1;
             if ((rgb == 12'hF40) !== (dx * dx + dy * dy <= 324))
                 $fatal(1, "Fruit circle mismatch dx=%0d dy=%0d", dx, dy);
-        end
-        ttl = 12;
-        for (dx = -31; dx <= 31; dx = dx + 1)
-        for (dy = -31; dy <= 31; dy = dy + 1) begin
-            rx = 300 + dx;
-            ry = 200 + dy;
-            #1;
-            if ((rgb == 12'hFF0) !== (dx * dx + dy * dy < 900)) $fatal(1, "Flash mask mismatch");
         end
         $display("PASS: geometry regression, reset abort, exact circle masks");
         $finish;

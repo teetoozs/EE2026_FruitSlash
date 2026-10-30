@@ -7,8 +7,6 @@ module tb_effects;
     reg [127:0] px = 0, py = 0;
     wire [15:0] active;
     wire [255:0] hx, hy;
-    wire signed [15:0] fx, fy;
-    wire [5:0] ttl;
     wire [7:0] splash_active;
     wire [127:0] splash_x, splash_y;
     wire [39:0] splash_age;
@@ -18,16 +16,18 @@ module tb_effects;
     cut_effects dut (
         .clk(clk), .reset(reset), .game_tick(tick), .playing(playing),
         .hit_mask(hit), .bomb(bomb), .positions_x(px), .positions_y(py),
-        .effect_x(fx), .effect_y(fy), .ttl(ttl),
         .splash_active(splash_active), .splash_x(splash_x),
         .splash_y(splash_y), .splash_age(splash_age),
         .halves_active(active), .halves_x(hx), .halves_y(hy)
     );
     pixel_compositor renderer (
+        .explosion_active(8'd0),
+        .explosion_x(128'd0),
+        .explosion_y(128'd0),
+        .explosion_age(6'd0),
         .x(x), .y(y), .video_on(video_on), .state(2'd1),
         .cursor_x(10'd1000), .cursor_y(10'd1000), .slash_active(1'b0),
         .active(8'd0), .bomb(8'd0), .positions_x(128'd0), .positions_y(128'd0),
-        .effect_x(fx), .effect_y(fy), .ttl(ttl),
         .splash_active(splash_active), .splash_x(splash_x),
         .splash_y(splash_y), .splash_age(splash_age),
         .halves_active(active), .halves_x(hx), .halves_y(hy), .rgb(rgb)
@@ -51,7 +51,7 @@ module tb_effects;
         hit = 255; tick = 1; step; hit = 0; tick = 0;
         if (splash_active !== 255 || splash_age !== 0 || splash_x !== px || splash_y !== py)
             $fatal(1, "All cuts must capture splash state");
-        if (active !== 16'hffff || ttl !== 0) $fatal(1, "All fruit cuts must create halves, not flashes");
+        if (active !== 16'hffff) $fatal(1, "All fruit cuts must create halves, not flashes");
         if (hx[15:0] !== 16'd1600 || hy[15:0] !== 16'd3200)
             $fatal(1, "Capture lost to simultaneous tick");
         repeat (4) frame;
@@ -77,11 +77,11 @@ module tb_effects;
         if (hx !== saved_x || hy !== saved_y) $fatal(1, "Pause must freeze halves");
         if (splash_age[4:0] !== 4) $fatal(1, "Pause must freeze splash");
         reset = 1; step; reset = 0; playing = 1;
-        if (splash_active !== 0 || active !== 0 || ttl !== 0) $fatal(1, "Restart must clear effects");
-        // Mixed fruit/bomb hit: bomb retains flash, never produces fruit pieces.
+        if (splash_active !== 0 || active !== 0) $fatal(1, "Restart must clear effects");
+        // Mixed fruit/bomb hit: bomb creates no fruit pieces, never produces fruit pieces.
         hit = 3; bomb = 2; step; hit = 0;
         if (splash_active !== 1) $fatal(1, "Bomb must not create juice");
-        if (active !== 16'h0003 || ttl !== 12) $fatal(1, "Bomb filtering failed");
+        if (active !== 16'h0003) $fatal(1, "Bomb filtering failed");
         // Reuse a slot: replace old pair at the new position.
         px[15:0] = 16'd4800; hit = 1; step; hit = 0;
         if (hx[15:0] !== 16'd4800 || hx[31:16] !== 16'd4800)
@@ -94,7 +94,7 @@ module tb_effects;
         frame;
         if (splash_active !== 0) $fatal(1, "Splash must expire after 24 ticks");
         repeat (76) frame;
-        if (splash_active !== 0 || active !== 0 || ttl !== 0) $fatal(1, "Effects must expire");
+        if (splash_active !== 0 || active !== 0) $fatal(1, "Effects must expire");
         // Negative x stays signed; visible right semicircle is clipped at screen edge.
         px[15:0] = -16'sd64; py[15:0] = 16'd1600;
         hit = 1; step; hit = 0;

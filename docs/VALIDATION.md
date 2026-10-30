@@ -76,3 +76,23 @@ critical warnings. Usage: 7,448 LUTs (35.81%), 2,635 flip-flops (6.33%), 13 DSPs
 (14.44%), no inferred latches. Post-synthesis DRC has only the existing slicing
 DSP pipelining advisories. Reports: build/synth_1792944933; regression project:
 build/check_1792944910. Timing closure, bitstream and board tests remain outstanding.
+
+## Bomb hit stop and explosion - 30 October 2026
+
+Replaced the single yellow bomb flash with bomb_effects and bomb_renderer.
+Every bomb in the accepted hit mask is captured at its original position. The
+world freezes for the whole 48-tick cinematic: 12 ticks of stationary highlighted
+bombs, then 36 ticks of white/orange fire, expanding octagonal shockwaves, eight
+outward fragment directions and fading embers. Background is dimmed during it.
+Nonfatal play resumes automatically. Fatal hits still finish animating before
+restart is accepted; SW2 pauses the animation and SW15/reset cancels it.
+Damage and object removal occur exactly once on the initial hit.
+
+Vivado 2025.2: tb_bombs (actual top-level integration), tb_bomb_pixels, tb_splash,
+tb_effects, tb_core and tb_geometry all PASS. Full RTL elaboration and mapped
+synthesis PASS, with no errors or critical warnings. Post-synthesis DRC has only
+existing slicing DSP pipelining advisories. Usage: 10,145 LUTs (48.77%), 2,815
+flip-flops (6.77%), 13 DSPs (14.44%), no inferred latches.
+Reports: build/synth_1793348606; regression project: build/check_1793348593.
+Placement/routing, timing closure, bitstream generation and board testing have
+not been performed for this change.

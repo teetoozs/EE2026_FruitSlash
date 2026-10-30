@@ -4,7 +4,7 @@
 | Sherwin Chang | rtl/gameplay | Real menu/UI data, high-score policy, multiplier, stats |
 | Titus Chia | rtl/physics and rtl/oled | Fruit types, launch waves, OLED text/hearts/summary |
 | Aloysius Lim | rtl/input and rtl/video | Trail, fonts/sprites, title/pause/over layouts, background |
-| Shen Yuncong | rtl/effects | Cut-dependent split direction/location, explosions, persistent splats (falling halves and animated juice bursts implemented) |
+| Shen Yuncong | rtl/effects | Cut-dependent split direction/location, persistent splats (halves, juice bursts and bomb freeze/explosions implemented) |
 Top-level integration is shared: review interface changes with affected owners.
 Sherwin owns UI *state/content*. Aloysius owns VGA pixel rendering.
 Titus alone owns OLED pixels; Sherwin supplies game values.

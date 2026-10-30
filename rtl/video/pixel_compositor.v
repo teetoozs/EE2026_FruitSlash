@@ -14,9 +14,10 @@ module pixel_compositor #(
     input         [   N-1:0] bomb,
     input         [N*16-1:0] positions_x,
     input         [N*16-1:0] positions_y,
-    input  signed [    15:0] effect_x,
-    input  signed [    15:0] effect_y,
-    input         [     5:0] ttl,
+    input [N-1:0] explosion_active,
+    input [N*16-1:0] explosion_x,
+    input [N*16-1:0] explosion_y,
+    input [5:0] explosion_age,
     input         [2*N-1:0] halves_active,
     input         [2*N*16-1:0] halves_x,
     input         [2*N*16-1:0] halves_y,
@@ -69,52 +70,23 @@ module pixel_compositor #(
         end
     endfunction
 
-    // Original flash used dx^2 + dy^2 < 900 (strict comparison).
-    function [4:0] extent30;
-        input [4:0] row;
-        begin
-            case (row)
-                5'd0: extent30 = 5'd29;
-                5'd1: extent30 = 5'd29;
-                5'd2: extent30 = 5'd29;
-                5'd3: extent30 = 5'd29;
-                5'd4: extent30 = 5'd29;
-                5'd5: extent30 = 5'd29;
-                5'd6: extent30 = 5'd29;
-                5'd7: extent30 = 5'd29;
-                5'd8: extent30 = 5'd28;
-                5'd9: extent30 = 5'd28;
-                5'd10: extent30 = 5'd28;
-                5'd11: extent30 = 5'd27;
-                5'd12: extent30 = 5'd27;
-                5'd13: extent30 = 5'd27;
-                5'd14: extent30 = 5'd26;
-                5'd15: extent30 = 5'd25;
-                5'd16: extent30 = 5'd25;
-                5'd17: extent30 = 5'd24;
-                5'd18: extent30 = 5'd23;
-                5'd19: extent30 = 5'd23;
-                5'd20: extent30 = 5'd22;
-                5'd21: extent30 = 5'd21;
-                5'd22: extent30 = 5'd20;
-                5'd23: extent30 = 5'd19;
-                5'd24: extent30 = 5'd17;
-                5'd25: extent30 = 5'd16;
-                5'd26: extent30 = 5'd14;
-                5'd27: extent30 = 5'd13;
-                5'd28: extent30 = 5'd10;
-                5'd29: extent30 = 5'd7;
-                default: extent30 = 0;
-            endcase
-        end
-    endfunction
+    wire explosion_pixel;
+    wire [11:0] explosion_rgb;
+    bomb_renderer #(.N(N)) blast (
+        .x(x),
+        .y(y),
+        .active(explosion_active),
+        .origins_x(explosion_x),
+        .origins_y(explosion_y),
+        .age(explosion_age),
+        .pixel_on(explosion_pixel),
+        .rgb(explosion_rgb)
+    );
 
     integer i;
     reg signed [15:0] qx, qy;
     reg signed [12:0] cx, cy, dx, dy;
     reg [12:0] abs_x, abs_y;
-    reg signed [16:0] effect_dx, effect_dy;
-    reg [16:0] effect_abs_x, effect_abs_y;
     always @(*) begin
         rgb   = y[5] ? 12'h642 : 12'h753;
         if (splash_pixel) rgb = splash_rgb;
@@ -152,12 +124,9 @@ module pixel_compositor #(
                 ((i % 2 == 0 && dx < 0) || (i % 2 == 1 && dx >= 0)))
                 rgb = 12'hF40;
         end
-        effect_dx    = $signed({1'b0, x}) - effect_x;
-        effect_dy    = $signed({1'b0, y}) - effect_y;
-        effect_abs_x = effect_dx < 0 ? -effect_dx : effect_dx;
-        effect_abs_y = effect_dy < 0 ? -effect_dy : effect_dy;
-        if (ttl != 0 && effect_abs_y < 30 && effect_abs_x <= extent30(effect_abs_y[4:0]))
-            rgb = 12'hFF0;
+        if (|explosion_active)
+            rgb = {1'b0, rgb[11:9], 1'b0, rgb[7:5], 1'b0, rgb[3:1]};
+        if (explosion_pixel) rgb = explosion_rgb;
         dx = $signed({1'b0, x}) - $signed({1'b0, cursor_x});
         dy = $signed({1'b0, y}) - $signed({1'b0, cursor_y});
         if ((dx >= -6 && dx <= 6 && dy == 0) || (dy >= -6 && dy <= 6 && dx == 0))

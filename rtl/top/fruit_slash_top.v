@@ -63,7 +63,12 @@ module fruit_slash_top (
     wire slice_busy;
     wire [N*16-1:0] positions_x, positions_y;
     wire playing, new_round;
-    assign hit_mask = raw_hit_mask & active & {N{playing}};
+    wire bomb_busy;
+    wire [N-1:0] explosion_active;
+    wire [N*16-1:0] explosion_x, explosion_y;
+    wire [5:0] explosion_age;
+    wire gameplay_enabled = playing && !bomb_busy;
+    assign hit_mask = raw_hit_mask & active & {N{gameplay_enabled}};
     wire [1:0] state, lives;
     wire [15:0] score, best_score;
     wire [7:0] combo;
@@ -74,6 +79,7 @@ module fruit_slash_top (
         .reset        (reset),
         .start_pressed(pressed[0]),
         .pause        (sw_sync[2]),
+        .effects_busy (bomb_busy),
         .slash_active (slash_active),
         .hit_mask     (hit_mask),
         .bomb         (bomb),
@@ -90,7 +96,7 @@ module fruit_slash_top (
     ) objects (
         .clk        (clk),
         .reset      (reset || new_round),
-        .game_tick  (game_tick && !slice_busy),
+        .game_tick  (game_tick && !slice_busy && !bomb_busy && !(|(hit_mask & bomb))),
         .playing    (playing),
         .difficulty (sw_sync[1:0]),
         .remove_mask(hit_mask),
@@ -104,7 +110,7 @@ module fruit_slash_top (
     ) slicing (
         .clk         (clk),
         .reset       (reset || new_round),
-        .playing     (playing),
+        .playing     (gameplay_enabled),
         .blade_event (blade_event),
         .slash_active(slash_active),
         .x0          (previous_x),
@@ -117,8 +123,21 @@ module fruit_slash_top (
         .hit_mask    (raw_hit_mask),
         .busy        (slice_busy)
     );
-    wire signed [15:0] effect_x, effect_y;
-    wire [5:0] ttl;
+    bomb_effects #(.N(N)) explosions (
+        .clk(clk),
+        .reset(reset || new_round),
+        .game_tick(game_tick),
+        .paused(sw_sync[2]),
+        .hit_mask(hit_mask),
+        .bomb(bomb),
+        .positions_x(positions_x),
+        .positions_y(positions_y),
+        .busy(bomb_busy),
+        .active(explosion_active),
+        .origins_x(explosion_x),
+        .origins_y(explosion_y),
+        .age(explosion_age)
+    );
     wire [N-1:0] splash_active;
     wire [N*16-1:0] splash_x, splash_y;
     wire [N*5-1:0] splash_age;
@@ -129,8 +148,8 @@ module fruit_slash_top (
     ) effects (
         .clk        (clk),
         .reset      (reset || new_round),
-        .game_tick  (game_tick),
-        .playing    (playing),
+        .game_tick  (game_tick && !(|(hit_mask & bomb))),
+        .playing    (gameplay_enabled),
         .hit_mask   (hit_mask),
         .bomb       (bomb),
         .positions_x(positions_x),
@@ -141,10 +160,7 @@ module fruit_slash_top (
         .splash_age(splash_age),
         .halves_active(halves_active),
         .halves_x    (halves_x),
-        .halves_y    (halves_y),
-        .effect_x   (effect_x),
-        .effect_y   (effect_y),
-        .ttl        (ttl)
+        .halves_y    (halves_y)
     );
     wire [9:0] pixel_x, pixel_y;
     wire video_on;
@@ -179,9 +195,10 @@ module fruit_slash_top (
         .halves_active(halves_active),
         .halves_x    (halves_x),
         .halves_y    (halves_y),
-        .effect_x    (effect_x),
-        .effect_y    (effect_y),
-        .ttl         (ttl),
+        .explosion_active(explosion_active),
+        .explosion_x(explosion_x),
+        .explosion_y(explosion_y),
+        .explosion_age(explosion_age),
         .rgb         (rgb)
     );
     assign {vgaRed, vgaGreen, vgaBlue} = rgb;

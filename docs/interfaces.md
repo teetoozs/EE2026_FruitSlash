@@ -33,7 +33,7 @@
   Pieces separate at +/-2 pixels/tick and accelerate downward by 0.25 pixels/tick^2.
   A new cut in the same object slot replaces its old pair. Pieces expire after
   90 ticks or when offscreen; pause freezes them and reset/new_round clears them.
-  The bomb input filters fruit effects; only the first simultaneous bomb gets a flash.
+  The bomb input filters fruit effects; bomb visuals live in bomb_effects/bomb_renderer.
 - Each fruit cut also captures splash_x/splash_y (packed signed Q12.4 origins).
   splash_active has N bits; splash_age packs 5 bits per slot, ages 0 through 23.
   Eight droplets spread and drift down around a shrinking core, then dither/fade.
@@ -41,6 +41,18 @@
   slot, even on a coincident tick. Bombs do not create juice. Pause/game over freezes
   the splash age; reset/new_round clears it. Current juice palette is orange.
 - Compositor priority: background, juice splashes, intact objects, fruit halves,
-  bomb flash, cursor, state stripe.
+  dimming during a bomb cinematic, explosions, cursor, state stripe.
+- bomb_effects snapshots all bomb hits and Q12.4 origins on acceptance. explosion_age
+  is a shared 6-bit counter: 0..11 hit stop (0.2 seconds), 12..47 blast (0.6 seconds).
+  explosion_active is one bit per captured bomb; busy is its reduction OR.
+- The initial hit removes objects and deducts lives once. During bomb_busy, top-level
+  hit masks and slice detection are blocked, physics ticks and fruit effects freeze,
+  and game_controller holds score/combo via effects_busy. The bomb-hit tick itself
+  also suppresses world movement. VGA timing and cursor input continue normally.
+- Bomb animation advances on game_tick independently of playing, including game over.
+  SW2 pauses the cinematic even after a fatal hit. Reset cancels it immediately.
+  Start/restart is ignored while effects_busy; press again after the blast finishes.
+  Nonfatal gameplay resumes automatically when the 48-tick sequence completes.
+- The old effect_x/effect_y/ttl single-flash interface has been removed.
   Full planned layer order is not yet implemented.
 - Keep interface changes in this document and notify the consuming module owner.

@@ -4,6 +4,8 @@ source [file join $root scripts create_project.tcl]
 cd $project_dir
 set_property xsim.simulate.runtime all [get_filesets sim_1]
 foreach {test marker} {
+    tb_bombs {PASS: bomb integration}
+    tb_bomb_pixels {PASS: bomb pixels}
     tb_splash {PASS: splash animation}
     tb_effects {PASS: fruit halves}
     tb_core {PASS: swept hit}

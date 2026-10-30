@@ -15,7 +15,7 @@ RTL elaboration additionally checks mixed-language MouseCtl/Ps2Interface binding
 tb_geometry compares 2-slot and 8-slot shared collision scans to a 64-bit
 mathematical reference (200 randomized cases plus tangent, near-miss, zero-length,
 long-swipe and negative-coordinate cases), checks reset cancellation, and checks
-every pixel around the fruit and flash masks against the original circle equation.
+every pixel around the fruit mask against the original circle equation.
 Run scripts/synthesize.tcl as well: only full synthesis reports hardware usage.
 ## Board acceptance (not yet performed)
 - VGA stable on monitor; black during blanking.
@@ -30,3 +30,13 @@ Run scripts/synthesize.tcl as well: only full synthesis reports hardware usage.
 ## Remaining tests
 Physics bounds, full VGA line/frame timing, debounce, mouse protocol on hardware,
 OLED mailbox/driver startup, long-run score saturation and integration stress.
+
+## Bomb effects
+- tb_bombs injects collision events into the actual fruit_slash_top integration and
+  checks same-tick object removal, one-time damage, frozen physics/fruit effects,
+  blocked additional cuts, manual pause, exact phase timing, automatic resume,
+  simultaneous fatal bombs, restart gating and reset cancellation.
+- tb_bomb_pixels checks the stationary hit-stop bomb, initial white flash, all eight
+  fragment directions across every blast age, shockwave, extinction and signed clipping.
+- Board acceptance: hit a bomb while objects move, pause during the explosion, then
+  verify automatic resume; repeat on the final life and verify the blast finishes.

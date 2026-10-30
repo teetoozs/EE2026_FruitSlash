@@ -9,9 +9,6 @@ module cut_effects #(parameter N = 8) (
     input [N-1:0] bomb,
     input [N*16-1:0] positions_x,
     input [N*16-1:0] positions_y,
-    output reg signed [15:0] effect_x = 0,
-    output reg signed [15:0] effect_y = 0,
-    output reg [5:0] ttl = 0,
     output reg [2*N-1:0] halves_active = 0,
     output [2*N*16-1:0] halves_x,
     output [2*N*16-1:0] halves_y,
@@ -26,7 +23,6 @@ module cut_effects #(parameter N = 8) (
     reg [6:0] life [0:2*N-1];
     reg [4:0] age [0:N-1];
     integer i;
-    reg found;
     genvar k;
     generate
         for (k = 0; k < 2*N; k = k + 1) begin : pack
@@ -39,14 +35,11 @@ module cut_effects #(parameter N = 8) (
     endgenerate
     always @(posedge clk) begin
         if (reset) begin
-            ttl <= 0;
             splash_active <= 0;
             splash_x <= 0;
             splash_y <= 0;
             for (i = 0; i < N; i = i + 1) age[i] <= 0;
             halves_active <= 0;
-            effect_x <= 0;
-            effect_y <= 0;
             for (i = 0; i < 2*N; i = i + 1) begin
                 px[i] <= 0;
                 py[i] <= 0;
@@ -61,7 +54,6 @@ module cut_effects #(parameter N = 8) (
                         else age[i] <= age[i] + 1'b1;
                     end
                 end
-                if (ttl != 0) ttl <= ttl - 1'b1;
                 for (i = 0; i < 2*N; i = i + 1) begin
                     if (halves_active[i]) begin
                         // Even pieces are left semicircles, odd pieces right semicircles.
@@ -75,7 +67,6 @@ module cut_effects #(parameter N = 8) (
                     end
                 end
             end
-            found = 0;
             for (i = 0; i < N; i = i + 1) begin
                 if (hit_mask[i]) begin
                     if (!bomb[i]) begin
@@ -94,11 +85,6 @@ module cut_effects #(parameter N = 8) (
                         vy[2*i+1] <= 16'sd24;
                         life[2*i] <= 90;
                         life[2*i+1] <= 90;
-                    end else if (!found) begin
-                        effect_x <= $signed(positions_x[i*16+:16]) >>> 4;
-                        effect_y <= $signed(positions_y[i*16+:16]) >>> 4;
-                        ttl <= 12;
-                        found = 1;
                     end
                 end
             end
