@@ -13,7 +13,7 @@ module board_displays (
     always @(posedge clk) scan <= scan + 1'b1;
     assign led = {10'd0, state, 1'b0, (lives >= 3), (lives >= 2), (lives >= 1)};
     always @(*) begin
-        decimal_score = score % 10000;
+        decimal_score = (score > 9999) ? 9999 : score;
         digit         = 0;
         an            = 4'b1111;
         case (scan[16:15])
@@ -23,15 +23,15 @@ module board_displays (
             end
             1: begin
                 an    = 4'b1101;
-                digit = (decimal_score / 10) % 10;
+                digit = (decimal_score >= 10) ? (decimal_score / 10) % 10 : 4'hF;
             end
             2: begin
                 an    = 4'b1011;
-                digit = (decimal_score / 100) % 10;
+                digit = (decimal_score >= 100) ? (decimal_score / 100) % 10 : 4'hF;
             end
             3: begin
                 an    = 4'b0111;
-                digit = decimal_score / 1000;
+                digit = (decimal_score >= 1000) ? decimal_score / 1000 : 4'hF;
             end
         endcase
         case (digit)
