@@ -1,11 +1,17 @@
 set root [file normalize [file join [file dirname [info script]] ..]]
 set project_dir [file join $root build check_[clock seconds]]
+if {[info exists ::env(FRUIT_SLASH_BUILD_ROOT)]} {
+    set project_dir [file join $::env(FRUIT_SLASH_BUILD_ROOT) check_[clock seconds]]
+}
 source [file join $root scripts create_project.tcl]
 cd $project_dir
 set_property xsim.simulate.runtime all [get_filesets sim_1]
 foreach {test marker} {
     tb_core {PASS: swept hit}
     tb_geometry {PASS: geometry regression}
+    tb_lives {PASS: life animation}
+    tb_variants {PASS: variable fruit sizes and HUD}
+    tb_spawns_damage {PASS: directional spawns and multi-hit fruit}
 } {
     set_property top $test [get_filesets sim_1]
     launch_simulation -mode behavioral
