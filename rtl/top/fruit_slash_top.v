@@ -67,6 +67,7 @@ module fruit_slash_top (
     wire [1:0] state, lives;
     wire [15:0] score, best_score;
     wire [7:0] combo;
+    wire [2:0] multiplier;
     game_controller #(
         .N(N)
     ) game (
@@ -83,7 +84,8 @@ module fruit_slash_top (
         .score        (score),
         .best_score   (best_score),
         .lives        (lives),
-        .combo        (combo)
+        .combo        (combo),
+        .multiplier   (multiplier)
     );
     object_physics #(
         .N(N)
