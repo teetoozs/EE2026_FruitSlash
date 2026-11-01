@@ -1,12 +1,13 @@
 // Juice burst: eight spreading droplets and a shrinking central splash.
-// Shared shape for all slots; future fruit palettes can replace these orange colours.
-module splash_renderer #(parameter N = 8) (
+// Shared shape with optional fruit colours; large watermelons use red juice.
+module splash_renderer #(parameter N = 8, parameter FRUIT_PALETTE = 0) (
     input [9:0] x,
     input [9:0] y,
     input [N-1:0] active,
     input [N*16-1:0] positions_x,
     input [N*16-1:0] positions_y,
     input [N*5-1:0] ages,
+    input [N*5-1:0] radii,
     output reg pixel_on,
     output reg [11:0] rgb
 );
@@ -17,7 +18,9 @@ module splash_renderer #(parameter N = 8) (
     reg [4:0] age;
     reg [5:0] spread;
     reg [3:0] radius, core;
+    reg [11:0] juice_colour;
     always @(*) begin
+        juice_colour = 12'hF90;
         pixel_on = 0;
         rgb = 0;
         qx = 0;
@@ -55,6 +58,18 @@ module splash_renderer #(parameter N = 8) (
                  sx + sy <= radius)) begin
                 pixel_on = 1;
                 rgb = age < 8 ? 12'hF90 : (age < 16 ? 12'hD60 : 12'hA40);
+                if (FRUIT_PALETTE) begin
+                    case (i % 4)
+                        0: juice_colour = 12'hF90;
+                        1: juice_colour = 12'hF45;
+                        2: juice_colour = 12'h8F4;
+                        default: juice_colour = 12'hD6F;
+                    endcase
+                    if (radii[i*5+:5] == 24) juice_colour = 12'hF45;
+                    rgb = age < 8 ? juice_colour :
+                          {1'b0, juice_colour[11:9], 1'b0, juice_colour[7:5],
+                           1'b0, juice_colour[3:1]};
+                end
             end
         end
     end

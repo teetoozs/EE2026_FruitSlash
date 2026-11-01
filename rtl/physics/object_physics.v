@@ -61,14 +61,36 @@ module object_physics #(
                     if (slot != -1) begin
                         active[slot] <= 1;
                         bomb[slot]   <= random_state[3:0] == 0;
-                        px[slot]     <= (16'd100 + {7'd0, random_state[8:0]}) << 4;
-                        py[slot]     <= 16'sd8000;
-                        vx[slot]     <= random_state[9] ? 16'sd20 : -16'sd20;
-                        vy[slot]     <= -16'sd168 - $signed({12'd0, difficulty, 2'b00});
+                        case (random_state[11:10])
+                            0: begin  // Bottom: upward arc.
+                                px[slot] <= (16'd64 + {7'd0, random_state[8:0]}) << 4;
+                                py[slot] <= 16'sd8000;
+                                vx[slot] <= random_state[9] ? 16'sd24 : -16'sd24;
+                                vy[slot] <= -16'sd168 - $signed({12'd0, difficulty, 2'b00});
+                            end
+                            1: begin  // Top: straight downward drop, then gravity.
+                                px[slot] <= (16'd64 + {7'd0, random_state[8:0]}) << 4;
+                                py[slot] <= -16'sd384;
+                                vx[slot] <= 0;
+                                vy[slot] <= 16'sd24;
+                            end
+                            2: begin  // Left: inward/upward throw.
+                                px[slot] <= -16'sd384;
+                                py[slot] <= (16'd120 + {8'd0, random_state[7:0]}) << 4;
+                                vx[slot] <= 16'sd96 + $signed({11'd0, difficulty, 3'b0});
+                                vy[slot] <= -16'sd64;
+                            end
+                            3: begin  // Right: mirrored throw.
+                                px[slot] <= 16'sd10624;
+                                py[slot] <= (16'd120 + {8'd0, random_state[7:0]}) << 4;
+                                vx[slot] <= -16'sd96 - $signed({11'd0, difficulty, 3'b0});
+                                vy[slot] <= -16'sd64;
+                            end
+                        endcase
                     end
                 end else spawn_count <= spawn_count + 1'b1;
             end
         end
     end
-    // TODO: fruit types/colours, difficulty tuning, launch waves and misses.
+    // TODO: launch waves and missed-fruit scoring events.
 endmodule

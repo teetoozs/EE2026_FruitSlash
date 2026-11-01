@@ -25,6 +25,10 @@ add_files -fileset sim_1 [file join $root sim tb_effects.v]
 add_files -fileset sim_1 [file join $root sim tb_splash.v]
 add_files -fileset sim_1 [file join $root sim tb_bombs.v]
 add_files -fileset sim_1 [file join $root sim tb_bomb_pixels.v]
+add_files -fileset sim_1 [file join $root sim tb_lives.v]
+add_files -fileset sim_1 [file join $root sim tb_variants.v]
+add_files -fileset sim_1 [file join $root sim tb_spawns_damage.v]
+add_files -fileset sim_1 [file join $root sim tb_effect_variants.v]
 set_property top tb_core [get_filesets sim_1]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1

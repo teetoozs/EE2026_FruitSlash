@@ -40,3 +40,10 @@ OLED mailbox/driver startup, long-run score saturation and integration stress.
   fragment directions across every blast age, shockwave, extinction and signed clipping.
 - Board acceptance: hit a bomb while objects move, pause during the explosion, then
   verify automatic resume; repeat on the final life and verify the blast finishes.
+
+## Combined gameplay/effects regression
+- tb_effect_variants checks that multi-hit watermelons split only on destruction,
+  repeated held contacts do not split them, all three captured half sizes render
+  correctly, recycled live radius changes do not resize pieces, and detailed
+  orange/red/watermelon pieces retain their palettes and cut interiors.
+- tb_bombs injects raw contacts through fruit_damage before checking bomb effects.

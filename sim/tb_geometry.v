@@ -115,6 +115,7 @@ module tb_geometry;
         .x           (rx),
         .y           (ry),
         .video_on    (1'b1),
+        .heart_levels(12'd0),
         .state       (2'd1),
         .cursor_x    (10'd1000),
         .cursor_y    (10'd1000),

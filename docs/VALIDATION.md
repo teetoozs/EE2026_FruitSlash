@@ -1,3 +1,28 @@
+# Directional spawns and artwork — 31 October 2026
+
+- All five behavioral tests passed, including directional spawn coordinates,
+  inward velocities, offscreen entry survival, three separate hits for large
+  fruit, held-swipe suppression, and recycled-slot bomb behaviour.
+- Full synthesis passed: 4730/20800 logic LUTs (22.74%), 909 CARRY4 and 13 DSPs.
+- Created a fresh project at %LOCALAPPDATA%/FruitSlashVivado/current referencing
+  this repository to avoid accidentally rebuilding the older separate clone.
+- Artwork uses original procedural shaded fruit, leaves/fuses, watermelon
+  stripes/cracks/durability pips and wooden planks. Not copied game assets.
+- No placement/routing timing closure, bitstream generation or board test was
+  performed for this revision. Follow OCT31_UPDATE.md to build/program it.
+
+# Display update — 22 October 2026
+
+- All four behavioral tests passed: core, geometry, life animation and variants.
+- Tests cover 3-second blinking, fade, simultaneous life loss, restart,
+  exact 12/18/24-radius masks, tangent/miss collision and VGA heart placement.
+- Full synthesis: 3006/20800 LUTs (14.45%), 1607 FFs, 573 CARRY4,
+  13/90 DSPs; zero synthesis errors or critical warnings.
+- Build was run outside OneDrive after a locked .Xil directory interrupted
+  an earlier attempt. check.tcl now accepts FRUIT_SLASH_BUILD_ROOT too.
+- Placement/routing, timing closure and physical board appearance have not
+  been verified for this update. Regenerate the project sources and bitstream.
+
 # Starter validation — 19 October 2026
 
 Tool: installed Vivado 2025.2 on Titus's machine.
@@ -96,3 +121,23 @@ flip-flops (6.77%), 13 DSPs (14.44%), no inferred latches.
 Reports: build/synth_1793348606; regression project: build/check_1793348593.
 Placement/routing, timing closure, bitstream generation and board testing have
 not been performed for this change.
+
+## Latest main integration - 1 November 2026
+
+Merged origin/main at 7325373 into develop/effects, retaining the fruit halves,
+juice splashes and bomb hit-stop/explosion sequence alongside directional spawns,
+variable fruit sizes, detailed artwork, multi-hit watermelons and animated hearts.
+Fruit destruction now drives effects through fruit_damage; watermelons split only
+on their third distinct swipe. Cut effects capture each fruit's radius so reused
+slots cannot resize falling pieces. Halves retain the slot palette and shading,
+with watermelon rind/flesh; juice uses fruit colours and red watermelon juice.
+
+Vivado 2025.2: all ten regression benches in scripts/check.tcl PASS, including
+new tb_effect_variants coverage for final-hit activation, captured radii, half
+silhouettes/colours and watermelon splash fading. RTL elaboration and mapped
+synthesis PASS with zero errors or critical warnings. Post-synthesis DRC reports
+only slicing DSP pipelining advisories. Usage: 13,304 LUTs (63.96%), 2,948
+flip-flops (7.09%), 13 DSPs (14.44%), zero inferred latches.
+Reports: build/synth_1793521373; regression project: build/check_1793521386.
+Placement/routing, timing closure, bitstream generation and board testing remain
+outstanding.

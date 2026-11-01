@@ -2,7 +2,8 @@
 // Shared swept-segment engine: four cycles per object, not eight parallel
 // 64-bit datapaths. The entire transaction emits ONE hit-mask pulse.
 module slice_detector #(
-    parameter N = 8
+    parameter N = 8,
+    parameter VARIABLE_RADIUS = 0
 ) (
     input                 clk,
     input                 reset,
@@ -14,6 +15,7 @@ module slice_detector #(
     x1,
     y1,
     input      [   N-1:0] active,
+    input      [ N*5-1:0] radii,
     input      [N*16-1:0] positions_x,
     positions_y,
     output reg [   N-1:0] hit_mask = 0,
@@ -33,9 +35,12 @@ module slice_detector #(
     reg [26:0] distance_a = 0, distance_b = 0, endpoint_distance = 0;
     reg [49:0] cross_squared = 0;
     reg [30:0] threshold = 0;
+    reg [N*5-1:0] saved_radii = 0;
+    wire [4:0] radius = VARIABLE_RADIUS ? saved_radii[index*5+:5] : 5'd18;
+    wire [9:0] radius_squared = radius * radius;
     reg endpoint = 0;
     wire qualifies = saved_active[index] &&
-        (endpoint ? endpoint_distance <= 27'd324 :
+        (endpoint ? endpoint_distance <= radius_squared :
                     cross_squared <= {19'd0, threshold});
     assign busy = stage != IDLE;
 
@@ -50,6 +55,7 @@ module slice_detector #(
                 IDLE:
                 if (blade_event && slash_active) begin
                     saved_active <= active;
+                    saved_radii  <= radii;
                     saved_x      <= positions_x;
                     saved_y      <= positions_y;
                     ax           <= $signed({1'b0, x0});
@@ -79,7 +85,7 @@ module slice_detector #(
                 end
                 SQUARE: begin
                     cross_squared <= cross_value * cross_value;
-                    threshold <= length_squared * 9'd324;
+                    threshold <= length_squared * radius_squared;
                     endpoint <= length_squared == 0 || dot <= 0 || dot >= $signed(
                         {3'b000, length_squared}
                     );

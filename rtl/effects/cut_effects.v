@@ -1,12 +1,14 @@
 // Yuncong: one pair per object slot; a new cut in a reused slot replaces its old pair.
 // Positions/velocities use signed Q12.4, like object_physics.
-module cut_effects #(parameter N = 8) (
+module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     input clk,
     input reset,
     input game_tick,
     input playing,
     input [N-1:0] hit_mask,
     input [N-1:0] bomb,
+    input [N*5-1:0] radii,
+    output reg [N*5-1:0] effect_radii = 0,
     input [N*16-1:0] positions_x,
     input [N*16-1:0] positions_y,
     output reg [2*N-1:0] halves_active = 0,
@@ -36,6 +38,7 @@ module cut_effects #(parameter N = 8) (
     always @(posedge clk) begin
         if (reset) begin
             splash_active <= 0;
+            effect_radii <= 0;
             splash_x <= 0;
             splash_y <= 0;
             for (i = 0; i < N; i = i + 1) age[i] <= 0;
@@ -70,6 +73,7 @@ module cut_effects #(parameter N = 8) (
             for (i = 0; i < N; i = i + 1) begin
                 if (hit_mask[i]) begin
                     if (!bomb[i]) begin
+                        effect_radii[i*5+:5] <= VARIABLE_RADIUS ? radii[i*5+:5] : 5'd18;
                         splash_active[i] <= 1;
                         splash_x[i*16+:16] <= positions_x[i*16+:16];
                         splash_y[i*16+:16] <= positions_y[i*16+:16];

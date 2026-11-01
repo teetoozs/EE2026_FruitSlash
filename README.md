@@ -25,15 +25,16 @@ four-feature submission. Advanced features are explicitly documented as TODOs.
 
 ## Implemented starter behaviour
 
-- 640x480 VGA scan with diagnostic state stripe and basic wood-colour bands.
+- 640x480 VGA with wooden planks, shaded fruit, leaves, bomb fuses and animated heart HUD.
 - Supplied VHDL MouseCtl integration, pointer crosshair and fallback buttons.
-- Eight fruit/bomb slots with signed fixed-point projectile motion and LFSR spawning.
+- Eight fruit/bomb slots with bottom/top/side launches and LFSR spawning.
+- Fruit radii 12/18/24; large watermelons need three separate held swipes.
 - Swept-segment/circle slicing, object removal and simultaneous hit masks.
 - Score, per-stroke combo bonus, three lives, pause, restart and session best.
-- Two falling semicircles per cut fruit, including simultaneous cuts.
+- Two falling pieces per destroyed fruit, preserving size, slot colour and watermelon rind.
 - Bomb hit stop, expanding shockwave and eight-direction fragments; fatal hits finish animating.
 - Animated juice bursts with spreading droplets and a shrinking, fading centre.
-- Diagnostic OLED lives/difficulty/combo bars and seven-segment score.
+- OLED animated hearts, difficulty/combo bars and seven-segment score.
 
 ## Not yet implemented
 

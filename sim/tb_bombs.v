@@ -46,6 +46,7 @@ module tb_bombs;
     reg [39:0] saved_splash;
     integer i;
     initial begin
+        force dut.slash_active = 1'b1;
         force dut.game_tick = frame_tick;
         force dut.raw_hit_mask = injected_hits;
         force dut.pressed = presses;
@@ -60,6 +61,7 @@ module tb_bombs;
         injected_hits = 3;
         frame;
         injected_hits = 0;
+        step;
         if (!dut.bomb_busy || dut.explosion_active !== 2 || dut.explosion_age !== 0)
             $fatal(1, "Bomb capture failed");
         if (dut.active !== 4 || dut.lives !== 2 || dut.score !== 10)
@@ -91,11 +93,14 @@ module tb_bombs;
         frame;
         if (dut.objects.px[2] !== 4832) $fatal(1, "World must resume after explosion");
         // Two simultaneous bombs consume the last two lives; both effects must finish.
+        dut.objects.active = 0;
+        step;
         seed_objects;
         dut.objects.bomb = 3;
         injected_hits = 3;
         step;
         injected_hits = 0;
+        step;
         if (dut.lives !== 0 || dut.state !== 3 || dut.explosion_active !== 3)
             $fatal(1, "Fatal simultaneous bombs failed");
         presses = 1;
