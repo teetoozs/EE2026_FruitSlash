@@ -232,6 +232,8 @@ module fruit_slash_top (
         .difficulty  (sw_sync[1:0]),
         .state       (state),
         .combo       (combo),
+        .best_score  (best_score),
+        .multiplier  (multiplier),
         .JB          (JB)
     );
 endmodule
