@@ -44,9 +44,18 @@ module tb_variants;
         .bomb        (1'b0),
         .positions_x (16'd1600),
         .positions_y (16'd1600),
-        .effect_x    (16'sd0),
-        .effect_y    (16'sd0),
-        .ttl         (6'd0),
+        .explosion_active(1'b0),
+        .explosion_x(16'd0),
+        .explosion_y(16'd0),
+        .explosion_age(6'd0),
+        .halves_active(2'd0),
+        .halves_x(32'd0),
+        .halves_y(32'd0),
+        .effect_radii(5'd18),
+        .splash_active(1'b0),
+        .splash_x(16'd0),
+        .splash_y(16'd0),
+        .splash_age(5'd0),
         .rgb         (rgb)
     );
     integer rad, dx, dy;

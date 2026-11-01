@@ -7,6 +7,7 @@ module game_controller #(
     input              reset,
     input              start_pressed,
     input              pause,
+    input              effects_busy,
     input              slash_active,
     input      [N-1:0] hit_mask,
     input      [N-1:0] bomb,
@@ -23,7 +24,7 @@ module game_controller #(
     integer i, j, fruits, bombs, fruit_points, next_score;
     assign multiplier = (combo + 1 > MAX_MULT) ? MAX_MULT : combo + 1;
     assign playing   = (state == 1) && !pause;
-    assign new_round = start_pressed && (state == 0 || state == 3);
+    assign new_round = start_pressed && !effects_busy && (state == 0 || state == 3);
     always @(*) begin
         fruits = 0;
         bombs  = 0;
@@ -56,7 +57,7 @@ module game_controller #(
             case (state)
                 1:
                 if (pause) state <= 2;
-                else begin
+                else if (!effects_busy) begin
                     score <= next_score;
                     if (next_score > best_score) best_score <= next_score;
                     if (!slash_active) combo <= 0;
