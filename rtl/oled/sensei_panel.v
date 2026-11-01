@@ -8,11 +8,8 @@ module sensei_panel (
     input  [ 1:0] difficulty,
     input  [ 1:0] state,
     input  [ 7:0] combo,
-<<<<<<< HEAD
     input  [15:0] best_score,
     input  [ 2:0] multiplier,
-=======
->>>>>>> origin/main
     output [ 7:0] JB
 );
     reg [2:0] div = 0;
@@ -28,29 +25,17 @@ module sensei_panel (
     end
     // Snapshot multi-bit status into a mailbox held stable while the
     // OLED domain receives a synchronized request. No torn status buses.
-<<<<<<< HEAD
     reg [44:0] mailbox = 0;
-=======
-    reg [25:0] mailbox = 0;
->>>>>>> origin/main
     reg request = 0;
     (* ASYNC_REG="TRUE" *) reg ack_meta = 0, ack_sync = 0;
     (* ASYNC_REG="TRUE" *) reg req_meta = 0, req_sync = 0;
     reg acknowledge = 0;
-<<<<<<< HEAD
     reg [44:0] status = 0;
-=======
-    reg [25:0] status = 0;
->>>>>>> origin/main
     always @(posedge clk) begin
         ack_meta <= acknowledge;
         ack_sync <= ack_meta;
         if (request == ack_sync) begin
-<<<<<<< HEAD
             mailbox <= {multiplier, best_score, heart_levels, lives, difficulty, state, combo};
-=======
-            mailbox <= {heart_levels, lives, difficulty, state, combo};
->>>>>>> origin/main
             request <= ~request;
         end
     end
@@ -79,16 +64,11 @@ module sensei_panel (
                 .x       ({3'b0, x}),
                 .y       ({4'b0, y}),
                 .left    (10'd8 + h * 10'd30),
-<<<<<<< HEAD
                 .top     (10'd12),
-=======
-                .top     (10'd10),
->>>>>>> origin/main
                 .pixel_on(heart[h])
             );
         end
     endgenerate
-<<<<<<< HEAD
     // ---- Text values (BCD from the OLED clock domain; font from ui_screens.v)
     wire [19:0] best_bcd, combo_bcd;
     bin2bcd best_conv  (.clk(oled_clk), .bin(shown_best),         .bcd(best_bcd));
@@ -123,26 +103,15 @@ module sensei_panel (
         if (grain) colour = 16'h6204;
         if (seam)  colour = 16'h3922;
         if (x < 2 || x >= 94 || y < 2 || y >= 62) colour = 16'hFE45;
-=======
-    integer i;
-    reg [3:0] brightness;
-    always @(*) begin
-        colour     = 16'h0000;
->>>>>>> origin/main
         brightness = 0;
         for (i = 0; i < 3; i = i + 1) begin
             brightness = status[14+i*4+:4];
             if (heart[i]) colour = {brightness, brightness[3], 11'b0};
         end
-<<<<<<< HEAD
         if (t_best)  colour = 16'hFE45;
         if (t_level) colour = 16'h07FF;
         if (t_combo) colour = 16'hFFFF;
         if (t_mult)  colour = 16'hFC00;
-=======
-        if (y >= 32 && y < 40 && x < ({6'd0, shown_difficulty} + 8'd1) * 8'd20) colour = 16'h07FF;
-        if (y >= 48 && y < 56 && x < (shown_combo > 20 ? 96 : shown_combo * 4)) colour = 16'hFFE0;
->>>>>>> origin/main
     end
     assign JB[2] = 0;
     Oled_Display driver (

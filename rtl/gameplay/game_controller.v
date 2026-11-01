@@ -1,7 +1,7 @@
 // Sherwin: score/lives events are hit masks, so simultaneous cuts survive.
 module game_controller #(
     parameter N = 8,
-    paramter MAX_MULT = 5
+    parameter MAX_MULT = 5
 ) (
     input              clk,
     input              reset,
@@ -17,11 +17,11 @@ module game_controller #(
     output reg [ 15:0] best_score = 0,
     output reg [  1:0] lives = 3,
     output reg [  7:0] combo = 0,
-    output reg [  2:0] multiplier
+    output     [  2:0] multiplier
 );
     // 0 title, 1 playing, 2 paused, 3 game over.
-    integer i, fruits, bombs, next_score;
-    assign multiplier = (combo + 1 > MAX_NULT) ? MAX_NULT : combo + 1;
+    integer i, j, fruits, bombs, fruit_points, next_score;
+    assign multiplier = (combo + 1 > MAX_MULT) ? MAX_MULT : combo + 1;
     assign playing   = (state == 1) && !pause;
     assign new_round = start_pressed && (state == 0 || state == 3);
     always @(*) begin
