@@ -36,8 +36,11 @@
 - Score adds all simultaneous fruits; lives subtract all simultaneous bomb hits.
 - Blade_event accompanies each mouse packet (or fallback update). Coordinates
   form one swept segment. Do not resample it only on game_tick.
-- Combo counts fruits during a continuous hold; release adds 5*(combo-1).
-  Base score=10 each, score saturates at 65535. Best survives round/reset.
+- Combo counts fruits during one continuous hold. The k-th fruit of a swipe
+  scores 10*min(k, MAX_MULT), MAX_MULT=5, awarded immediately (no release bonus).
+  Score saturates at 65535. Best survives round/reset.
+- game_controller outputs multiplier[2:0] = multiplier the NEXT fruit will get
+  (x1 at the start of a swipe, up to x5). Wired in the top as `multiplier`.
 - Pause freezes physics/effects/scoring; pointer remains responsive.
 - BTNC press starts/restarts only on title/game-over. During fallback gameplay,
   BTNC held slices. SW15 resets, SW3 selects fallback, SW2 pauses, SW1:0 difficulty.
@@ -48,3 +51,20 @@
   Debug state stripes on VGA and OLED have been removed.
   Full planned layer order is not yet implemented.
 - Keep interface changes in this document and notify the consuming module owner.
+- best_score[15:0] (session best) goes to the OLED panel (sensei_panel) and to
+  ui_screens. OLED mailbox is now 45 bits: {multiplier, best_score, hearts,
+  lives, difficulty, state, combo}; older fields keep their bit positions.
+- Seven-segment display blanks leading zeros and caps the shown score at 9999.
+- ui_screens (rtl/gameplay/ui_screens.v) draws the title, pause and game-over
+  screens. It is a top VGA layer: output = ui_on ? ui_rgb : compositor rgb.
+  Inputs: x, y, state, score, best_score, cursor_x/y, slash_active, btn_start.
+  It also draws its own cursor marker in non-playing states. Nothing is drawn
+  while state == 1 (playing).
+- Title mode boards: slicing the SOLO or VERSUS board (cursor over it while
+  slash_active) asserts start_req and sets mode (0 = solo, 1 = versus).
+  start_req is ORed with BTNC into game_controller.start_pressed. BTNC with
+  the cursor over no board starts solo. In fallback mode BTNC counts as a
+  slice, so BTNC over the VERSUS board selects versus.
+- mode is currently unused. The second game mode must read it.
+- ui_screens also provides shared modules used by the OLED panel: bin2bcd,
+  glyph35, font5x7, text_line and fancy_text.

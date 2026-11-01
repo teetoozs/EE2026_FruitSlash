@@ -98,12 +98,23 @@ module fruit_slash_top (
         .health      (fruit_health)
     );
     wire [7:0] combo;
+    wire [2:0] multiplier;
+    wire ui_on, ui_start, game_mode;
+    wire [11:0] ui_rgb;
+    ui_screens ui (
+        .clk(clk), .x(pixel_x), .y(pixel_y), .state(state),
+        .score(score), .best_score(best_score),
+        .cursor_x(cursor_x), .cursor_y(cursor_y),
+        .slash_active(slash_active), .btn_start(pressed[0]),
+        .ui_on(ui_on), .ui_rgb(ui_rgb),
+        .mode(game_mode), .start_req(ui_start)
+    );
     game_controller #(
         .N(N)
     ) game (
         .clk          (clk),
         .reset        (reset),
-        .start_pressed(pressed[0]),
+        .start_pressed(pressed[0] || ui_start),
         .pause        (sw_sync[2]),
         .slash_active (slash_active),
         .hit_mask     (hit_mask),
@@ -114,7 +125,8 @@ module fruit_slash_top (
         .score        (score),
         .best_score   (best_score),
         .lives        (lives),
-        .combo        (combo)
+        .combo        (combo),
+        .multiplier   (multiplier)
     );
     object_physics #(
         .N(N)
@@ -202,7 +214,7 @@ module fruit_slash_top (
         .ttl         (ttl),
         .rgb         (rgb)
     );
-    assign {vgaRed, vgaGreen, vgaBlue} = rgb;
+    assign {vgaRed, vgaGreen, vgaBlue} = ui_on ? ui_rgb : rgb;
     board_displays board (
         .clk  (clk),
         .score(score),
@@ -220,6 +232,8 @@ module fruit_slash_top (
         .difficulty  (sw_sync[1:0]),
         .state       (state),
         .combo       (combo),
+        .best_score  (best_score),
+        .multiplier  (multiplier),
         .JB          (JB)
     );
 endmodule
