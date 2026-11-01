@@ -101,6 +101,7 @@ module fruit_slash_top (
     wire [2:0] multiplier;
     wire ui_on, ui_start, game_mode;
     wire [11:0] ui_rgb;
+    wire [9:0] pixel_x, pixel_y;
     ui_screens ui (
         .clk(clk), .x(pixel_x), .y(pixel_y), .state(state),
         .score(score), .best_score(best_score),
@@ -178,7 +179,6 @@ module fruit_slash_top (
         .effect_y   (effect_y),
         .ttl        (ttl)
     );
-    wire [9:0] pixel_x, pixel_y;
     wire video_on;
     wire [11:0] rgb;
     vga_timing timing (

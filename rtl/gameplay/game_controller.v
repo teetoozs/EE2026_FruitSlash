@@ -34,7 +34,8 @@ module game_controller #(
         end
         // Live multiplier: the k-th fruit of a swipe scores 10*k, capped at MAX_MULT.
         fruit_points = 0;
-        for (j = 1; j <= fruits; j = j + 1)
+        for (j = 1; j <= N; j = j + 1)
+            if (j <= fruits)
             fruit_points = fruit_points + 10 * (((combo + j) > MAX_MULT) ? MAX_MULT : (combo + j));
         next_score = score + fruit_points;
         
