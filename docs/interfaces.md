@@ -10,7 +10,7 @@
 - Top supplies a packed 5-bit radius per slot to renderer and collision engine.
   Fruit slots cycle through radii 12, 18, 24; bombs stay radius 18.
   Colours cycle orange, red, green, purple by slot. These are still circular
-  placeholder fruit, not detailed sprites. Size/colour remain stable in flight.
+  procedurally shaded fruit with leaves, watermelon stripes and durability pips. Size/colour remain stable in flight.
   VARIABLE_RADIUS=1 enables the radius bus; default 0 preserves radius 18.
 - life_animation supplies three 4-bit heart brightness levels. On life loss,
   only lost hearts blink at 2 Hz for 3 seconds, then fade over about 0.5 seconds.
@@ -42,9 +42,34 @@
 - BTNC press starts/restarts only on title/game-over. During fallback gameplay,
   BTNC held slices. SW15 resets, SW3 selects fallback, SW2 pauses, SW1:0 difficulty.
 - State encoding: 0 title, 1 play, 2 pause, 3 over.
-- Effects currently retain only first simultaneous hit for a flash. This is a
-  deliberate placeholder; final effects need a per-hit queue or independent slots.
-- Compositor priority: background, intact objects, flash, cursor, top-right hearts.
-  Debug state stripes on VGA and OLED have been removed.
+- Effects capture every fruit hit into two half slots (2*i left, 2*i+1 right).
+  halves_x/halves_y are packed signed Q12.4 centres, 16 bits per piece;
+  halves_active has 2*N bits. effect_radii captures 5 bits per fruit slot on destruction,
+  so reused live slots cannot resize existing pieces. Splits are vertical through the centre.
+  Halves use slot colours, shading, highlights and watermelon rind/flesh in detailed mode.
+  Pieces separate at +/-2 pixels/tick and accelerate downward by 0.25 pixels/tick^2.
+  A new cut in the same object slot replaces its old pair. Pieces expire after
+  90 ticks or when offscreen; pause freezes them and reset/new_round clears them.
+  The bomb input filters fruit effects; bomb visuals live in bomb_effects/bomb_renderer.
+- Each fruit cut also captures splash_x/splash_y (packed signed Q12.4 origins).
+  splash_active has N bits; splash_age packs 5 bits per slot, ages 0 through 23.
+  Eight droplets spread and drift down around a shrinking core, then dither/fade.
+  Effects last 24 game ticks (~0.4 seconds). New cuts replace the splash in that
+  slot, even on a coincident tick. Bombs do not create juice. Pause/game over freezes
+  the splash age; reset/new_round clears it. Detailed juice palettes follow slot colours, with red watermelon juice.
+- Compositor priority: background, juice splashes, intact objects, fruit halves,
+  dimming during a bomb cinematic, explosions, cursor, top-right hearts. Debug state stripes are removed.
+- bomb_effects snapshots all bomb hits and Q12.4 origins on acceptance. explosion_age
+  is a shared 6-bit counter: 0..11 hit stop (0.2 seconds), 12..47 blast (0.6 seconds).
+  explosion_active is one bit per captured bomb; busy is its reduction OR.
+- The initial hit removes objects and deducts lives once. During bomb_busy, top-level
+  hit masks and slice detection are blocked, physics ticks and fruit effects freeze,
+  and game_controller holds score/combo via effects_busy. The bomb-hit tick itself
+  also suppresses world movement. VGA timing and cursor input continue normally.
+- Bomb animation advances on game_tick independently of playing, including game over.
+  SW2 pauses the cinematic even after a fatal hit. Reset cancels it immediately.
+  Start/restart is ignored while effects_busy; press again after the blast finishes.
+  Nonfatal gameplay resumes automatically when the 48-tick sequence completes.
+- The old effect_x/effect_y/ttl single-flash interface has been removed.
   Full planned layer order is not yet implemented.
 - Keep interface changes in this document and notify the consuming module owner.

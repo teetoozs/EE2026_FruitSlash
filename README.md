@@ -25,19 +25,22 @@ four-feature submission. Advanced features are explicitly documented as TODOs.
 
 ## Implemented starter behaviour
 
-- 640x480 VGA scan with diagnostic state stripe and basic wood-colour bands.
+- 640x480 VGA with wooden planks, shaded fruit, leaves, bomb fuses and animated heart HUD.
 - Supplied VHDL MouseCtl integration, pointer crosshair and fallback buttons.
-- Eight fruit/bomb slots with signed fixed-point projectile motion and LFSR spawning.
+- Eight fruit/bomb slots with bottom/top/side launches and LFSR spawning.
+- Fruit radii 12/18/24; large watermelons need three separate held swipes.
 - Swept-segment/circle slicing, object removal and simultaneous hit masks.
 - Score, per-stroke combo bonus, three lives, pause, restart and session best.
-- One cut flash; diagnostic OLED lives/difficulty/combo bars and seven-segment score.
+- Two falling pieces per destroyed fruit, preserving size, slot colour and watermelon rind.
+- Bomb hit stop, expanding shockwave and eight-direction fragments; fatal hits finish animating.
+- Animated juice bursts with spreading droplets and a shrinking, fading centre.
+- OLED animated hearts, difficulty/combo bars and seven-segment score.
 
 ## Not yet implemented
 
-Finished title/pause/game-over text, fonts/sprites, blade trails, directional fruit
-halves, persistent splats, bomb explosion frames, multiplier and end statistics.
-See ownership.md. Current hit-flash captures only one hit visually; scoring handles
-all hit-mask bits. Hardware acceptance and implementation timing must be checked.
+Finished title/pause/game-over text, fonts/sprites, blade trails, cut-direction-dependent fruit
+splits, persistent splats, multiplier and end statistics.
+See ownership.md. Fruit halves and bomb explosions support all eight hit slots. A new fruit cut in a reused slot replaces its previous halves. Hardware acceptance and implementation timing must be checked.
 
 ## Build
 
