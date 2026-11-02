@@ -4,11 +4,11 @@ module tb_new_gameplay;
  reg reset=1,tick=0,playing=1,start=0,slash=1,event_in=0,contact=0;
  reg [2:0] hits=0,bomb=0,missed=0;
  reg [9:0] x0=200,y0=240,x1=320,y1=240;
- wire bonus,award; wire [8:0] remaining; wire [7:0] streak;
+ wire bonus,award,visible,accepting,cutting,falling; wire [15:0] bx,by; wire [5:0] radius; wire [6:0] fall_age; wire [8:0] remaining; wire [7:0] streak;
  streak_bonus #(.N(3),.TARGET(3),.TICKS(12)) b(.clk(clk),.reset(reset),.tick(tick),
  .playing(playing),.slash_active(slash),.blade_event(event_in),.contact(contact),
  .x0(x0),.y0(y0),.x1(x1),.y1(y1),.hits(hits),.bomb(bomb),.missed(missed),
- .active(bonus),.award(award),.remaining(remaining),.streak(streak));
+ .active(bonus),.award(award),.visible(visible),.accepting(accepting),.cutting(cutting),.falling(falling),.position_x(bx),.position_y(by),.radius(radius),.fall_age(fall_age),.remaining(remaining),.streak(streak));
  wire [1:0] lives,state; wire [15:0] score;
  game_controller #(.N(3)) g(.clk(clk),.reset(reset),.start_pressed(start),.pause(1'b0),
  .effects_busy(1'b0),.slash_active(slash),.hit_mask(hits),.bomb(bomb),.missed(missed),
@@ -35,7 +35,16 @@ module tb_new_gameplay;
   @(negedge clk);missed=1;step;@(negedge clk);missed=0;
   if(lives!==2) $fatal(1,"Miss must deduct one life");
   @(negedge clk);hits=3'b111;step;@(negedge clk);hits=0;
-  if(!bonus || remaining!=12 || !wall_on) $fatal(1,"Wave should trigger bonus and wall splats");
+  if(bonus || !visible || !accepting || radius!=36 || !wall_on)
+   $fatal(1,"Streak must spawn a fruit without starting the bonus");
+  repeat(8) frame;
+  if(by>=8000 || bonus) $fatal(1,"Bonus fruit must fly through normal play");
+  contact=1;step;@(negedge clk);contact=0;
+  if(!bonus || accepting || remaining!=0) $fatal(1,"Contact must trigger zoom before timer");
+  playing=0;frame;if(radius!=36) $fatal(1,"Pause changed zoom");playing=1;
+  repeat(30) frame;
+  if(!cutting || bx!=5120 || by!=3840 || radius!=54 || remaining!=12)
+   $fatal(1,"Zoom must centre fruit and increase radius by exactly 50 percent");
   // Release and make a moving swipe; one award, no stationary farming.
   slash=0;step;@(negedge clk);slash=1;event_in=1;step;
   @(negedge clk);event_in=0;contact=1;step;
@@ -51,7 +60,10 @@ module tb_new_gameplay;
   @(negedge clk);contact=0;step;
   if(score!=110) $fatal(1,"Repeated bonus hit must add another 25 points");
   repeat(6) frame;
-  if(bonus || wall_on) $fatal(1,"Bonus and wall decal must expire");
+  if(!bonus || !falling || accepting || remaining!=0) $fatal(1,"Timer must start falling halves");
+  playing=0;frame;if(fall_age!=0) $fatal(1,"Pause changed falling halves");playing=1;
+  repeat(90) frame;
+  if(bonus || visible || wall_on) $fatal(1,"Bonus must end after halves leave");
   @(negedge clk);hits=1;bomb=1;missed=2;step;
   if(lives!=0 || state!=3 || streak!=0) $fatal(1,"Bomb plus miss must saturate lives and end round");
   $display("PASS: waves misses bonus and wall splats");$finish;

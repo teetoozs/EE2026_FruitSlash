@@ -32,12 +32,12 @@ Physics bounds, full VGA line/frame timing, debounce, mouse protocol on hardware
 OLED mailbox/driver startup, long-run score saturation and integration stress.
 
 ## Bomb effects
+- Bomb timing: 240 ticks at 60 Hz (three seconds opening seams, half a second bursting, half a second fading). The cursor and hearts are held with the scene.
 - tb_bombs injects collision events into the actual fruit_slash_top integration and
   checks same-tick object removal, one-time damage, frozen physics/fruit effects,
   blocked additional cuts, manual pause, exact phase timing, automatic resume,
   simultaneous fatal bombs, restart gating and reset cancellation.
-- tb_bomb_pixels checks the stationary hit-stop bomb, initial white flash, all eight
-  fragment directions across every blast age, shockwave, extinction and signed clipping.
+- tb_bomb_pixels checks gradual crack widening/brightening, delayed grey light, a compact local burst, captured origins, transparent distant pixels and extinction.
 - Board acceptance: hit a bomb while objects move, pause during the explosion, then
   verify automatic resume; repeat on the final life and verify the blast finishes.
 
@@ -47,3 +47,15 @@ OLED mailbox/driver startup, long-run score saturation and integration stress.
   correctly, recycled live radius changes do not resize pieces, and detailed
   orange/red/watermelon pieces retain their palettes and cut interiors.
 - tb_bombs injects raw contacts through fruit_damage before checking bomb effects.
+
+## Spawned bonus acceptance
+
+- tb_bonus_scene verifies ten cuts spawn a bonus fruit without freezing play,
+  cutting that fruit starts the zoom, distant VGA pixels retain the compositor
+  scene, the timer starts after zoom and gameplay resumes after the falling halves.
+- tb_new_gameplay covers flight, exact 36-to-54 radius growth, centred arrival,
+  pause during zoom/cutting/fall, repeat-swipe scoring and final expiration.
+- tb_bonus_view checks directional scars, transparent circle boundaries, the
+  opening half gap and both halves retaining the golden fruit silhouette.
+- Board: earn the bonus, slice the flying golden fruit, check the unchanged wood
+  and frozen other fruit during zoom/cutting, then check both halves fall away.

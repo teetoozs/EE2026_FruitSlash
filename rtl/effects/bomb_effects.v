@@ -29,7 +29,7 @@ module bomb_effects #(parameter N = 8) (
                 origins_y <= positions_y;
                 age <= 0;
             end else if (busy && game_tick) begin
-                if (age == 299) begin
+                if (age == 239) begin
                     active <= 0;
                     age <= 0;
                 end else age <= age + 1'b1;

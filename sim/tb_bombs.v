@@ -70,6 +70,23 @@ module tb_bombs;
             $fatal(1, "Hit tick moved world or captured wrong origin");
         saved_halves = dut.halves_x;
         saved_splash = dut.splash_age;
+        force dut.pixel_x = 10'd0;
+        force dut.pixel_y = 10'd0;
+        force dut.video_on = 1'b1;
+        force dut.cursor_x = 10'd500;
+        force dut.cursor_y = 10'd400;
+        step;
+        if (dut.compositor.cursor_x !== dut.frozen_cursor_x ||
+            dut.compositor.cursor_y !== dut.frozen_cursor_y ||
+            dut.compositor.heart_levels !== dut.frozen_hearts)
+            $fatal(1, "Visible scene moved during bomb freeze");
+        if (dut.blast_view_on || {dut.vgaRed,dut.vgaGreen,dut.vgaBlue} !== dut.rgb)
+            $fatal(1, "Bomb overlay must preserve distant scene");
+        release dut.pixel_x;
+        release dut.pixel_y;
+        release dut.video_on;
+        release dut.cursor_x;
+        release dut.cursor_y;
         // New hit attempts are blocked throughout the cinematic.
         injected_hits = 4;
         repeat (11) frame;
@@ -84,12 +101,12 @@ module tb_bombs;
         switches[0] = 0;
         step;
         frame;
-        if (dut.explosion_age !== 12) $fatal(1, "Blast must begin after 12 ticks");
-        repeat (287) frame;
-        if (!dut.bomb_busy || dut.explosion_age !== 299) $fatal(1, "Blast ended early");
+        if (dut.explosion_age !== 12) $fatal(1, "Crack timeline must advance after pause");
+        repeat (227) frame;
+        if (!dut.bomb_busy || dut.explosion_age !== 239) $fatal(1, "Blast ended early");
         injected_hits = 0;
         frame;
-        if (dut.bomb_busy) $fatal(1, "Explosion must finish at 300 ticks");
+        if (dut.bomb_busy) $fatal(1, "Explosion must finish at 240 ticks");
         frame;
         if (dut.objects.px[2] !== 4800 || dut.state !== 3) $fatal(1, "World must stay stopped after fatal hit");
         presses=1;step;presses=0;step;
@@ -108,7 +125,7 @@ module tb_bombs;
         step;
         presses = 0;
         if (dut.state !== 3 || !dut.bomb_busy) $fatal(1, "Restart must wait for cinematic");
-        repeat (300) frame;
+        repeat (240) frame;
         if (dut.bomb_busy || dut.state !== 3 || dut.lives !== 0)
             $fatal(1, "Fatal explosion stuck or repeated damage");
         presses = 1;

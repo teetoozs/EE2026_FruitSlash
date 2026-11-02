@@ -68,6 +68,10 @@ module fruit_slash_top (
     wire [N*16-1:0] explosion_x, explosion_y;
     wire [8:0] explosion_age;
     wire bonus_active, bonus_award, bonus_contact, bonus_busy;
+    wire bonus_visible, bonus_accepting, bonus_cutting, bonus_falling;
+    wire [15:0] bonus_x, bonus_y;
+    wire [5:0] bonus_radius;
+    wire [6:0] bonus_fall_age;
     wire [8:0] bonus_remaining;
     wire [7:0] streak;
     wire [N-1:0] missed;
@@ -83,6 +87,18 @@ module fruit_slash_top (
         .lives       (lives),
         .heart_levels(heart_levels)
     );
+    // Hold the visible cursor and hearts with the world during the cinematic.
+    reg [9:0] frozen_cursor_x = 0, frozen_cursor_y = 0;
+    reg frozen_slash = 0;
+    reg [11:0] frozen_hearts = 0;
+    always @(posedge clk) begin
+        if (!bomb_busy) begin
+            frozen_cursor_x <= cursor_x;
+            frozen_cursor_y <= cursor_y;
+            frozen_slash <= slash_active;
+            frozen_hearts <= heart_levels;
+        end
+    end
     wire [N*5-1:0] radii;
     genvar slot;
     generate
@@ -145,7 +161,7 @@ module fruit_slash_top (
     ) objects (
         .clk        (clk),
         .reset      (reset || new_round),
-        .game_tick  (game_tick && !slice_busy && !bomb_busy && !(|raw_hit_mask) && !(|destroyed)),
+        .game_tick  (game_tick && !slice_busy && !bomb_busy && !(|raw_hit_mask) && !(|destroyed) && !bonus_contact),
         .playing    (gameplay_enabled),
         .difficulty (sw_sync[2:1]),
         .remove_mask(hit_mask),
@@ -222,31 +238,34 @@ module fruit_slash_top (
     wall_splats #(.N(N)) wall(.clk(clk),.reset(reset||new_round),.tick(game_tick),
       .playing(gameplay_enabled),.hits(hit_mask),.bomb(bomb),.px(positions_x),.py(positions_y),
       .x(pixel_x),.y(pixel_y),.pixel_on(wall_on),.rgb(wall_rgb));
-    streak_bonus #(.N(N)) bonus(.clk(clk),.reset(reset||new_round),.tick(game_tick),
+    streak_bonus #(.N(N)) bonus(.clk(clk),.reset(reset||new_round||state==3),
+      .tick(game_tick && !(bonus_busy && !bonus_active)),
       .playing(playing&&!bomb_busy),.slash_active(slash_active),.blade_event(blade_event),
       .contact(bonus_contact),.x0(previous_x),.y0(previous_y),.x1(cursor_x),.y1(cursor_y),
       .hits(hit_mask),.bomb(bomb),.missed(missed),.active(bonus_active),.award(bonus_award),
-      .remaining(bonus_remaining),.streak(streak));
-    slice_detector #(.N(1),.VARIABLE_RADIUS(1),.SIZE_SHIFT(3)) bonus_slice(
-      .clk(clk),.reset(reset||new_round),.playing(playing&&bonus_active),
+      .remaining(bonus_remaining),.streak(streak),
+      .visible(bonus_visible),.accepting(bonus_accepting),.cutting(bonus_cutting),
+      .falling(bonus_falling),.position_x(bonus_x),.position_y(bonus_y),
+      .radius(bonus_radius),.fall_age(bonus_fall_age));
+    slice_detector #(.N(1),.VARIABLE_RADIUS(1),.SIZE_SHIFT(1)) bonus_slice(
+      .clk(clk),.reset(reset||new_round),.playing(playing&&!bomb_busy&&bonus_accepting),
       .blade_event(blade_event),.slash_active(slash_active),.x0(previous_x),.y0(previous_y),
-      .x1(cursor_x),.y1(cursor_y),.active(bonus_active),.radii(5'd18),
-      .positions_x(16'd5120),.positions_y(16'd3840),.hit_mask(bonus_contact),.busy(bonus_busy));
+      .x1(cursor_x),.y1(cursor_y),.active(bonus_accepting),.radii(bonus_radius[5:1]),
+      .positions_x(bonus_x),.positions_y(bonus_y),.hit_mask(bonus_contact),.busy(bonus_busy));
     wire bonus_view_on, blast_view_on;
     wire [11:0] bonus_view_rgb, blast_view_rgb;
-    bonus_fruit_view bonus_view(.clk(clk),.reset(reset||new_round),.active(bonus_active),
-      .cut(bonus_award),.x0(previous_x),.y0(previous_y),.x1(cursor_x),.y1(cursor_y),
+    bonus_fruit_view bonus_view(.clk(clk),.reset(reset||new_round),.active(bonus_visible),
+      .falling(bonus_falling),.position_x(bonus_x),.position_y(bonus_y),
+      .radius(bonus_radius),.fall_age(bonus_fall_age),.cut(bonus_award),.x0(previous_x),.y0(previous_y),.x1(cursor_x),.y1(cursor_y),
       .x(pixel_x),.y(pixel_y),.pixel_on(bonus_view_on),.rgb(bonus_view_rgb));
-    bomb_renderer #(.N(N)) full_blast(.x(pixel_x),.y(pixel_y),.active(explosion_active),
+    bomb_renderer #(.N(N), .RADIUS(36)) full_blast(.x(pixel_x),.y(pixel_y),.active(explosion_active),
       .origins_x(explosion_x),.origins_y(explosion_y),.age(explosion_age),
       .pixel_on(blast_view_on),.rgb(blast_view_rgb));
-    wire signed [10:0] bdx=$signed({1'b0,pixel_x})-11'sd320;
-    wire signed [10:0] bdy=$signed({1'b0,pixel_y})-11'sd240;
-    wire [10:0] bax=bdx<0 ? -bdx:bdx, bay=bdy<0 ? -bdy:bdy;
-    // Octagonal golden bonus melon, with a five-second countdown bar.
-    wire bonus_pixel=bonus_active && bax<=66 && bay<=66 && bax+bay<=94;
-    wire bonus_bar=bonus_active && pixel_y>=410 && pixel_y<418 &&
+    // Timer remains a small overlay; the wood/world are never replaced.
+    wire bonus_bar=bonus_cutting && pixel_y>=410 && pixel_y<418 &&
                    pixel_x>=170 && pixel_x<170+bonus_remaining;
+    wire bonus_cursor=(pixel_x==cursor_x && pixel_y+6>=cursor_y && pixel_y<=cursor_y+6) ||
+                      (pixel_y==cursor_y && pixel_x+6>=cursor_x && pixel_x<=cursor_x+6);
     wire video_on;
     wire [11:0] rgb;
     vga_timing timing (
@@ -266,15 +285,15 @@ module fruit_slash_top (
         .effect_radii(effect_radii),
         .health      (fruit_health),
         .radii       (radii),
-        .heart_levels(heart_levels),
+        .heart_levels(bomb_busy ? frozen_hearts : heart_levels),
         .wall_on(wall_on), .wall_rgb(wall_rgb),
         .x           (pixel_x),
         .y           (pixel_y),
         .video_on    (video_on),
         .state       (state),
-        .cursor_x    (cursor_x),
-        .cursor_y    (cursor_y),
-        .slash_active(slash_active),
+        .cursor_x    (bomb_busy ? frozen_cursor_x : cursor_x),
+        .cursor_y    (bomb_busy ? frozen_cursor_y : cursor_y),
+        .slash_active(bomb_busy ? frozen_slash : slash_active),
         .active      (active),
         .bomb        (bomb),
         .positions_x (positions_x),
@@ -303,9 +322,10 @@ module fruit_slash_top (
       .playing(playing),.bomb_busy(bomb_busy),.bonus_active(bonus_active),.bonus_award(bonus_award),
       .combo(combo),.x(pixel_x),.y(pixel_y),.pixel_on(popup_on),.rgb(popup_rgb));
     assign {vgaRed, vgaGreen, vgaBlue} = !video_on ? 12'h000 :
-      bomb_busy ? blast_view_rgb : popup_on ? popup_rgb :
+      bomb_busy ? (blast_view_on ? blast_view_rgb : rgb) : popup_on ? popup_rgb :
       (trail_on && pixel_y>=48) ? trail_rgb : ui_on ? ui_rgb : bonus_bar ? 12'hFF4 :
-      bonus_view_on ? bonus_view_rgb : bonus_active ? 12'h210 : rgb;
+      bonus_visible && bonus_cursor ? (slash_active ? 12'hF00 : 12'hFFF) :
+      bonus_view_on ? bonus_view_rgb : rgb;
     board_displays board (
         .clk  (clk),
         .score(score),

@@ -142,9 +142,65 @@ Reports: build/synth_1793521373; regression project: build/check_1793521386.
 Placement/routing, timing closure, bitstream generation and board testing remain
 outstanding.
 
+## Compact four-second bomb cinematic - 2 November 2026
+
+On develop/Yuncong, replaced the full-screen five-second grey smoke with a
+transparent local effect. The original-size bomb stays at its captured position:
+ages 0..179 progressively open and brighten seams with short pale-grey beams;
+180..209 show a local flash and eight small shell fragments; 210..239 fade the
+fragments. At 60 Hz this is four seconds, excluding manual pauses. Physics,
+fruit effects, visible cursor and heart levels stay frozen during the cinematic.
+Pixels outside the effect retain the scene; game-over UI waits until it finishes.
+
+Vivado 2025.2: all 13 check.tcl simulations and RTL elaboration PASS. The expanded
+tb_bombs additionally PASSes cursor/heart freeze and transparent-scene assertions.
+Mapped synthesis completes with zero errors or critical warnings; DRC reports
+DSP pipelining advisories. Full branch usage is 20,278 LUTs (97.49%), 4,116
+registers (9.89%) and 48 DSPs (53.33%). Resource headroom is limited; synthesis
+does not establish placement/routing feasibility or timing closure.
+Regression: build/check_1793607692; additional freeze regression:
+build/bomb_check_1793607957; synthesis: build/synth_1793607746.
+Bitstream generation, timing closure and physical-board visual acceptance have
+not been performed for this change.
+
+## Spawned bonus fruit and preserved scene - 2 November 2026
+
+Ten clean cuts now launch a golden fruit into normal gameplay. Cutting that fruit
+starts a 30-tick centring animation, increasing its radius from 36 to 54 pixels.
+The five-second repeat-cut timer starts on arrival. The wood, other fruit and wall
+splats remain visible. At expiry the fruit separates into two halves, which fall
+for 90 ticks before ordinary gameplay resumes. All stages respect pause; reset,
+new round and game over cancel the bonus. The earlier bomb changes are retained.
+
+All 14 simulations in scripts/check.tcl and top-level RTL elaboration PASS.
+Coverage includes spawned-fruit triggering, transparent scene composition, exact
+50% enlargement, timer sequencing, pause, repeated swipe awards, split masks and
+resumption. Mapped synthesis PASSes with zero errors or critical warnings; DRC
+contains DSP pipelining advisories. Full design usage: 20,593 LUTs (99.00%), 4,209
+registers (10.12%) and 48 DSPs (53.33%). Only 207 LUTs remain, so placement/routing
+and timing feasibility are unverified and additional features need resource care.
+Regression: build/check_1793608726. Synthesis: build/synth_1793608681.
+No bitstream or physical-board visual test was performed for this change.
 ## White trail and slice popups (2 November 2026)
 Added a white fading blade trail, a per-swipe COMBO popup, and a BONUS SLICES counter driven by accepted bonus-award events. The bonus counter resets for each bonus round and remains visible for 45 gameplay ticks afterwards. Pause freezes popup timers; restart clears them. Both popups use the existing UI font. Gameplay scoring is unchanged.
 
 The generated project is now build/vivado_refreshed/fruit_slash.xpr; regenerate with scripts/create_project.tcl to include the added modules. GUI synthesis uses AreaOptimized_high.
 
 Validation: all 14 simulations passed, including trail continuity/fading and counter/reset/pause checks. Final shared-font glyph checks also passed via scripts/check_popups.tcl. Integrated RTL elaboration completed with zero errors and zero critical warnings. Full synthesis, routed timing and board testing remain outstanding for this version; earlier synthesis results above apply to the earlier design.
+
+## PR #4 integration with latest main - 2 November 2026
+
+Merged origin/main 2b51b98 into develop/Yuncong. Retained the four-second local
+bomb cinematic and spawned/zooming bonus fruit with its wood background, while
+adding the upstream white blade trail and combo/bonus-slice popups. Kept both
+regression suites, all validation history and the refreshed GUI project settings.
+
+All 15 simulations and top-level RTL elaboration PASS in build/check_1793609490.
+The default-directive scripts/synthesize.tcl run completes synthesis with zero
+compiler errors or critical warnings, but post-synthesis DRC FAILS UTLZ-1:
+23,170 LUTs are required versus 20,800 available (111.39%, 2,370 over capacity).
+Registers: 5,256 (12.63%); DSPs: 48 (53.33%). Reports are in
+build/synth_1793609521. This merged design is not hardware-ready under those
+settings. The upstream GUI project selects AreaOptimized_high; that separate
+strategy, placement/routing and board operation have not been validated here.
+The PR conflicts are resolved; area optimization remains a separate hardware task.
