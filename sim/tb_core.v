@@ -15,6 +15,7 @@ module tb_core;
         .reset        (reset),
         .start_pressed(start),
         .pause        (pause),
+        .effects_busy (1'b0),
         .slash_active (slash),
         .hit_mask     (hits),
         .bomb         (bombs),
