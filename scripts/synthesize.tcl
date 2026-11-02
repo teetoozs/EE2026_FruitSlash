@@ -7,7 +7,7 @@ if {[info exists ::env(FRUIT_SLASH_BUILD_ROOT)]} {
 }
 source [file join $root scripts create_project.tcl]
 cd $project_dir
-synth_design -top fruit_slash_top -part xc7a35tcpg236-1
+synth_design -directive [get_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE [get_runs synth_1]] -top fruit_slash_top -part xc7a35tcpg236-1
 report_utilization -hierarchical -file [file join $project_dir utilization_hierarchical.rpt]
 report_utilization -file [file join $project_dir utilization.rpt]
 report_drc -file [file join $project_dir synthesis_drc.rpt]

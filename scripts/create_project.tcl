@@ -35,6 +35,8 @@ add_files -fileset sim_1 [file join $root sim tb_scaled_slice.v]
 add_files -fileset sim_1 [file join $root sim tb_bonus_view.v]
 add_files -fileset sim_1 [file join $root sim tb_bonus_scene.v]
 add_files -fileset sim_1 [list [file join $root sim tb_slice_popups.v]]
+add_files -fileset sim_1 [file join $root sim reference_ui_screens.v]
+add_files -fileset sim_1 [file join $root sim tb_ui_equivalence.v]
 set_property top tb_core [get_filesets sim_1]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
