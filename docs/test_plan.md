@@ -3,7 +3,7 @@
 Run scripts/check.tcl through Vivado. tb_core verifies:
 - swept fast swipe, stationary hit, disabled blade and inactive objects
 - multiple fruit hits in one cycle
-- combo awarded once on release
+- live combo multiplier: k-th fruit of a swipe scores 10×k (cap ×5), no release bonus
 - pause, simultaneous bomb damage and round restart
 tb_effects verifies all eight simultaneous fruit cuts, separating/falling pieces,
 semicircle pixels, pause, reset/restart, bomb filtering, slot reuse, expiration,
@@ -27,6 +27,11 @@ Run scripts/synthesize.tcl as well: only full synthesis reports hardware usage.
 - No repeated score from the same object.
 - Difficulty changes do not overflow velocity/position.
 - Run implementation, inspect timing/utilization/DRC before Generate Bitstream.
+- Title screen shows; slicing SOLO or VERSUS starts the game; BTNC starts solo.
+- Pause (SW2) shows the pause plaque and score; lowering SW2 resumes.
+- Game over shows score and best; "NEW BEST!" appears only on a record; BTNC restarts.
+- Seven-segment shows no leading zeros and never exceeds 9999.
+- OLED shows best score, level, combo and multiplier matching the game.
 ## Remaining tests
 Physics bounds, full VGA line/frame timing, debounce, mouse protocol on hardware,
 OLED mailbox/driver startup, long-run score saturation and integration stress.

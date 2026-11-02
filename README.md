@@ -30,16 +30,16 @@ four-feature submission. Advanced features are explicitly documented as TODOs.
 - Eight fruit/bomb slots with bottom/top/side launches and LFSR spawning.
 - Fruit radii 12/18/24; large watermelons need three separate held swipes.
 - Swept-segment/circle slicing, object removal and simultaneous hit masks.
-- Score, per-stroke combo bonus, three lives, pause, restart and session best.
+- Score with a live combo multiplier (the k-th fruit of a swipe scores 10×k, capped at ×5), three lives, pause, restart and session best.
 - Two falling pieces per destroyed fruit, preserving size, slot colour and watermelon rind.
 - Bomb hit stop, expanding shockwave and eight-direction fragments; fatal hits finish animating.
 - Animated juice bursts with spreading droplets and a shrinking, fading centre.
-- OLED animated hearts, difficulty/combo bars and seven-segment score.
+- OLED wooden panel with animated hearts, best score, level, combo and multiplier text; seven-segment score with leading zeros blanked (capped at 9999).
+- Title, pause and game-over screens (chunky outlined font, wooden plaques); slicing the SOLO or VERSUS board starts the game, BTNC starts solo.
 
 ## Not yet implemented
 
-Finished title/pause/game-over text, fonts/sprites, blade trails, cut-direction-dependent fruit
-splits, persistent splats, multiplier and end statistics.
+Blade trails, cut-direction-dependent fruit splits, persistent splats, end-of-game statistics, and the VERSUS game mode (the title screen outputs mode, but nothing reads it yet).
 See ownership.md. Fruit halves and bomb explosions support all eight hit slots. A new fruit cut in a reused slot replaces its previous halves. Hardware acceptance and implementation timing must be checked.
 
 ## Build

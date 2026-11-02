@@ -28,7 +28,7 @@
 Tool: installed Vivado 2025.2 on Titus's machine.
 
 - Core behavioral simulation: PASS. Swept and stationary collision, disabled
-  blade/inactive slots, simultaneous fruit score, release combo, pause, two-bomb
+  blade/inactive slots, simultaneous fruit score, live combo multiplier, pause, two-bomb
   damage, game over and restart.
 - Full top-level RTL elaboration: PASS, zero errors/critical warnings.
 - Supplied MouseCtl and Ps2Interface VHDL entities bind successfully.
