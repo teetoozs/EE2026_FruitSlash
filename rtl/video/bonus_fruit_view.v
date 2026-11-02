@@ -1,0 +1,192 @@
+module bonus_fruit_view(
+ input clk,reset,active,cut,
+ input [9:0] x0,y0,x1,y1,x,y,
+ output pixel_on, output reg [11:0] rgb
+);
+ reg [9:0] ax[0:7],ay[0:7],bx[0:7],by[0:7];
+ reg [7:0] valid=0;reg [2:0] next_cut=0;
+ integer i;
+ always @(posedge clk) begin
+  if(reset || !active) begin valid<=0;next_cut<=0;end
+  else if(cut) begin
+   ax[next_cut]<=x0;ay[next_cut]<=y0;bx[next_cut]<=x1;by[next_cut]<=y1;
+   valid[next_cut]<=1;next_cut<=next_cut+1'b1;
+  end
+ end
+ wire signed [10:0] dx=$signed({1'b0,x})-11'sd320;
+ wire signed [10:0] dy=$signed({1'b0,y})-11'sd240;
+ wire [10:0] absx=dx<0 ? -dx:dx,absy=dy<0 ? -dy:dy;
+ reg [7:0] extent;
+ always @(*) begin
+  case(absy)
+          8'd0: extent=8'd144;
+          8'd1: extent=8'd143;
+          8'd2: extent=8'd143;
+          8'd3: extent=8'd143;
+          8'd4: extent=8'd143;
+          8'd5: extent=8'd143;
+          8'd6: extent=8'd143;
+          8'd7: extent=8'd143;
+          8'd8: extent=8'd143;
+          8'd9: extent=8'd143;
+          8'd10: extent=8'd143;
+          8'd11: extent=8'd143;
+          8'd12: extent=8'd143;
+          8'd13: extent=8'd143;
+          8'd14: extent=8'd143;
+          8'd15: extent=8'd143;
+          8'd16: extent=8'd143;
+          8'd17: extent=8'd142;
+          8'd18: extent=8'd142;
+          8'd19: extent=8'd142;
+          8'd20: extent=8'd142;
+          8'd21: extent=8'd142;
+          8'd22: extent=8'd142;
+          8'd23: extent=8'd142;
+          8'd24: extent=8'd141;
+          8'd25: extent=8'd141;
+          8'd26: extent=8'd141;
+          8'd27: extent=8'd141;
+          8'd28: extent=8'd141;
+          8'd29: extent=8'd141;
+          8'd30: extent=8'd140;
+          8'd31: extent=8'd140;
+          8'd32: extent=8'd140;
+          8'd33: extent=8'd140;
+          8'd34: extent=8'd139;
+          8'd35: extent=8'd139;
+          8'd36: extent=8'd139;
+          8'd37: extent=8'd139;
+          8'd38: extent=8'd138;
+          8'd39: extent=8'd138;
+          8'd40: extent=8'd138;
+          8'd41: extent=8'd138;
+          8'd42: extent=8'd137;
+          8'd43: extent=8'd137;
+          8'd44: extent=8'd137;
+          8'd45: extent=8'd136;
+          8'd46: extent=8'd136;
+          8'd47: extent=8'd136;
+          8'd48: extent=8'd135;
+          8'd49: extent=8'd135;
+          8'd50: extent=8'd135;
+          8'd51: extent=8'd134;
+          8'd52: extent=8'd134;
+          8'd53: extent=8'd133;
+          8'd54: extent=8'd133;
+          8'd55: extent=8'd133;
+          8'd56: extent=8'd132;
+          8'd57: extent=8'd132;
+          8'd58: extent=8'd131;
+          8'd59: extent=8'd131;
+          8'd60: extent=8'd130;
+          8'd61: extent=8'd130;
+          8'd62: extent=8'd129;
+          8'd63: extent=8'd129;
+          8'd64: extent=8'd128;
+          8'd65: extent=8'd128;
+          8'd66: extent=8'd127;
+          8'd67: extent=8'd127;
+          8'd68: extent=8'd126;
+          8'd69: extent=8'd126;
+          8'd70: extent=8'd125;
+          8'd71: extent=8'd125;
+          8'd72: extent=8'd124;
+          8'd73: extent=8'd124;
+          8'd74: extent=8'd123;
+          8'd75: extent=8'd122;
+          8'd76: extent=8'd122;
+          8'd77: extent=8'd121;
+          8'd78: extent=8'd121;
+          8'd79: extent=8'd120;
+          8'd80: extent=8'd119;
+          8'd81: extent=8'd119;
+          8'd82: extent=8'd118;
+          8'd83: extent=8'd117;
+          8'd84: extent=8'd116;
+          8'd85: extent=8'd116;
+          8'd86: extent=8'd115;
+          8'd87: extent=8'd114;
+          8'd88: extent=8'd113;
+          8'd89: extent=8'd113;
+          8'd90: extent=8'd112;
+          8'd91: extent=8'd111;
+          8'd92: extent=8'd110;
+          8'd93: extent=8'd109;
+          8'd94: extent=8'd109;
+          8'd95: extent=8'd108;
+          8'd96: extent=8'd107;
+          8'd97: extent=8'd106;
+          8'd98: extent=8'd105;
+          8'd99: extent=8'd104;
+          8'd100: extent=8'd103;
+          8'd101: extent=8'd102;
+          8'd102: extent=8'd101;
+          8'd103: extent=8'd100;
+          8'd104: extent=8'd99;
+          8'd105: extent=8'd98;
+          8'd106: extent=8'd97;
+          8'd107: extent=8'd96;
+          8'd108: extent=8'd95;
+          8'd109: extent=8'd94;
+          8'd110: extent=8'd92;
+          8'd111: extent=8'd91;
+          8'd112: extent=8'd90;
+          8'd113: extent=8'd89;
+          8'd114: extent=8'd87;
+          8'd115: extent=8'd86;
+          8'd116: extent=8'd85;
+          8'd117: extent=8'd83;
+          8'd118: extent=8'd82;
+          8'd119: extent=8'd81;
+          8'd120: extent=8'd79;
+          8'd121: extent=8'd78;
+          8'd122: extent=8'd76;
+          8'd123: extent=8'd74;
+          8'd124: extent=8'd73;
+          8'd125: extent=8'd71;
+          8'd126: extent=8'd69;
+          8'd127: extent=8'd67;
+          8'd128: extent=8'd65;
+          8'd129: extent=8'd63;
+          8'd130: extent=8'd61;
+          8'd131: extent=8'd59;
+          8'd132: extent=8'd57;
+          8'd133: extent=8'd55;
+          8'd134: extent=8'd52;
+          8'd135: extent=8'd50;
+          8'd136: extent=8'd47;
+          8'd137: extent=8'd44;
+          8'd138: extent=8'd41;
+          8'd139: extent=8'd37;
+          8'd140: extent=8'd33;
+          8'd141: extent=8'd29;
+          8'd142: extent=8'd23;
+          8'd143: extent=8'd16;
+          8'd144: extent=8'd0;
+   default:extent=0;
+  endcase
+ end
+ assign pixel_on=active && absy<=144 && absx<=extent;
+ wire [7:0] scar;
+ genvar k;
+ generate for(k=0;k<8;k=k+1) begin:marks
+  wire signed [10:0] vx=$signed({1'b0,bx[k]})-$signed({1'b0,ax[k]});
+  wire signed [10:0] vy=$signed({1'b0,by[k]})-$signed({1'b0,ay[k]});
+  wire signed [10:0] px=$signed({1'b0,x})-$signed({1'b0,ax[k]});
+  wire signed [10:0] py=$signed({1'b0,y})-$signed({1'b0,ay[k]});
+  wire signed [22:0] cross_product=px*vy-py*vx;
+  wire [22:0] distance=cross_product<0 ? -cross_product:cross_product;
+  wire [10:0] avx=vx<0 ? -vx:vx,avy=vy<0 ? -vy:vy;
+  wire [12:0] thickness=({2'b0,avx}+{2'b0,avy})<<1;
+  wire box_x=x>=(ax[k]<bx[k]?ax[k]:bx[k]) && x<=(ax[k]>bx[k]?ax[k]:bx[k]);
+  wire box_y=y>=(ay[k]<by[k]?ay[k]:by[k]) && y<=(ay[k]>by[k]?ay[k]:by[k]);
+  assign scar[k]=valid[k] && (avx!=0 || avy!=0) && box_x && box_y && distance<=thickness;
+ end endgenerate
+ always @(*) begin
+  rgb=dy>40 ? 12'hD60:12'hF92;
+  if(dx< -45 && dy< -45) rgb=12'hFC7;
+  if(absx+3>=extent || absy>140) rgb=12'hA40;
+  if(|scar) rgb=12'hFFE;
+ end
+endmodule

@@ -110,7 +110,7 @@ world freezes for the whole 48-tick cinematic: 12 ticks of stationary highlighte
 bombs, then 36 ticks of white/orange fire, expanding octagonal shockwaves, eight
 outward fragment directions and fading embers. Background is dimmed during it.
 Nonfatal play resumes automatically. Fatal hits still finish animating before
-restart is accepted; SW2 pauses the animation and SW15/reset cancels it.
+restart is accepted; SW0 pauses the animation and SW15/reset cancels it.
 Damage and object removal occur exactly once on the initial hit.
 
 Vivado 2025.2: tb_bombs (actual top-level integration), tb_bomb_pixels, tb_splash,

@@ -11,6 +11,8 @@ module game_controller #(
     input              slash_active,
     input      [N-1:0] hit_mask,
     input      [N-1:0] bomb,
+    input [N-1:0] missed,
+    input bonus_hit,
     output reg [  1:0] state = 0,
     output             playing,
     output             new_round,
@@ -21,13 +23,15 @@ module game_controller #(
     output     [  2:0] multiplier
 );
     // 0 title, 1 playing, 2 paused, 3 game over.
-    integer i, j, fruits, bombs, fruit_points, next_score;
+    integer i, j, fruits, bombs, losses, fruit_points, next_score;
     assign multiplier = (combo + 1 > MAX_MULT) ? MAX_MULT : combo + 1;
     assign playing   = (state == 1) && !pause;
     assign new_round = start_pressed && !effects_busy && (state == 0 || state == 3);
     always @(*) begin
         fruits = 0;
         bombs  = 0;
+        losses = 0;
+        for (j=0; j<N; j=j+1) losses = losses + missed[j];
         for (i = 0; i < N; i = i + 1)
         if (hit_mask[i]) begin
             if (bomb[i]) bombs = bombs + 1;
@@ -38,7 +42,8 @@ module game_controller #(
         for (j = 1; j <= N; j = j + 1)
             if (j <= fruits)
             fruit_points = fruit_points + 10 * (((combo + j) > MAX_MULT) ? MAX_MULT : (combo + j));
-        next_score = score + fruit_points;
+        losses = losses + bombs;
+        next_score = score + fruit_points + (bonus_hit ? 25 : 0);
         
         if (next_score > 65535) next_score = 65535;
     end
@@ -60,13 +65,13 @@ module game_controller #(
                 else if (!effects_busy) begin
                     score <= next_score;
                     if (next_score > best_score) best_score <= next_score;
-                    if (!slash_active) combo <= 0;
+                    if (!slash_active || losses != 0) combo <= 0;
                     else if (combo + fruits > 255) combo <= 255;
                     else combo <= combo + fruits;
-                    if (bombs >= lives && bombs != 0) begin
+                    if (bombs != 0 || (losses >= lives && losses != 0)) begin
                         lives <= 0;
                         state <= 3;
-                    end else lives <= lives - bombs;
+                    end else lives <= lives - losses;
                 end
                 2: if (!pause) state <= 1;
                 default: begin

@@ -29,7 +29,8 @@ module tb_effect_variants;
     wire [23:0] colours;
     generate for (mode=0; mode<2; mode=mode+1) begin : renderers
         pixel_compositor #(.N(3), .VARIABLE_RADIUS(1), .DETAILED_ART(mode)) renderer (
-            .x(x), .y(y), .video_on(1'b1), .heart_levels(12'd0),
+            .x(x), .y(y), .wall_on(1'b0), .wall_rgb(12'b0),
+        .video_on(1'b1), .heart_levels(12'd0),
             .radii(radii), .health(health), .state(2'd1),
             .cursor_x(10'd1000), .cursor_y(10'd1000), .slash_active(1'b0),
             .active(3'd0), .bomb(3'd0), .positions_x(48'd0), .positions_y(48'd0),

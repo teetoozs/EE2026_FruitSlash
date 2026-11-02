@@ -43,7 +43,7 @@
   (x1 at the start of a swipe, up to x5). Wired in the top as `multiplier`.
 - Pause freezes physics/effects/scoring; pointer remains responsive.
 - BTNC press starts/restarts only on title/game-over. During fallback gameplay,
-  BTNC held slices. SW15 resets, SW3 selects fallback, SW2 pauses, SW1:0 difficulty.
+  BTNC held slices. SW15 resets, SW3 selects fallback, SW0 pauses, SW2:1 difficulty.
 - State encoding: 0 title, 1 play, 2 pause, 3 over.
 - Effects capture every fruit hit into two half slots (2*i left, 2*i+1 right).
   halves_x/halves_y are packed signed Q12.4 centres, 16 bits per piece;
@@ -70,7 +70,7 @@
   and game_controller holds score/combo via effects_busy. The bomb-hit tick itself
   also suppresses world movement. VGA timing and cursor input continue normally.
 - Bomb animation advances on game_tick independently of playing, including game over.
-  SW2 pauses the cinematic even after a fatal hit. Reset cancels it immediately.
+  SW0 pauses the cinematic even after a fatal hit. Reset cancels it immediately.
   Start/restart is ignored while effects_busy; press again after the blast finishes.
   Nonfatal gameplay resumes automatically when the 48-tick sequence completes.
 - The old effect_x/effect_y/ttl single-flash interface has been removed.

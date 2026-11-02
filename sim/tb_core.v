@@ -19,6 +19,7 @@ module tb_core;
         .slash_active (slash),
         .hit_mask     (hits),
         .bomb         (bombs),
+        .missed(2'b0), .bonus_hit(1'b0),
         .state        (state),
         .playing      (playing),
         .new_round    (new_round),
@@ -123,7 +124,7 @@ module tb_core;
         bombs = 3;
         hits  = 3;
         step;
-        if (lives !== 1) $fatal(1, "Two simultaneous bombs must remove two lives");
+        if (lives !== 0 || state !== 3) $fatal(1, "Bombs must kill instantly");
         @(negedge clk);
         hits = 1;
         step;

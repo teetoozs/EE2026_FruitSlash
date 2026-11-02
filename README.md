@@ -19,8 +19,8 @@ four-feature submission. Advanced features are explicitly documented as TODOs.
 | BTNC | Start/restart on title/game-over |
 | Mouse left hold | Slice during play |
 | SW3 | Button fallback: U/D/L/R move, C held slices |
-| SW2 | Pause/resume |
-| SW1:0 | Difficulty |
+| SW0 | Pause/resume |
+| SW2:1 | Difficulty |
 | SW15 | Reset to title |
 
 ## Implemented starter behaviour

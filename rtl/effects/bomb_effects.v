@@ -13,7 +13,7 @@ module bomb_effects #(parameter N = 8) (
     output reg [N-1:0] active = 0,
     output reg [N*16-1:0] origins_x = 0,
     output reg [N*16-1:0] origins_y = 0,
-    output reg [5:0] age = 0
+    output reg [8:0] age = 0
 );
     assign busy = |active;
     always @(posedge clk) begin
@@ -29,7 +29,7 @@ module bomb_effects #(parameter N = 8) (
                 origins_y <= positions_y;
                 age <= 0;
             end else if (busy && game_tick) begin
-                if (age == 47) begin
+                if (age == 299) begin
                     active <= 0;
                     age <= 0;
                 end else age <= age + 1'b1;

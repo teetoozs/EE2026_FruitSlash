@@ -64,7 +64,7 @@ module tb_bombs;
         step;
         if (!dut.bomb_busy || dut.explosion_active !== 2 || dut.explosion_age !== 0)
             $fatal(1, "Bomb capture failed");
-        if (dut.active !== 4 || dut.lives !== 2 || dut.score !== 10)
+        if (dut.active !== 4 || dut.lives !== 0 || dut.score !== 10)
             $fatal(1, "Initial removal, score or life event lost");
         if (dut.explosion_x[31:16] !== 3200 || dut.objects.px[2] !== 4800)
             $fatal(1, "Hit tick moved world or captured wrong origin");
@@ -78,20 +78,21 @@ module tb_bombs;
         if (dut.halves_x !== saved_halves || dut.splash_age !== saved_splash)
             $fatal(1, "Fruit effects must freeze too");
         // Manual pause stops the explosion clock, without applying additional damage.
-        switches[2] = 1;
+        switches[0] = 1;
         repeat (6) frame;
-        if (dut.explosion_age !== 11 || dut.lives !== 2) $fatal(1, "Pause failed");
-        switches[2] = 0;
+        if (dut.explosion_age !== 11 || dut.lives !== 0) $fatal(1, "Pause failed");
+        switches[0] = 0;
         step;
         frame;
         if (dut.explosion_age !== 12) $fatal(1, "Blast must begin after 12 ticks");
-        repeat (35) frame;
-        if (!dut.bomb_busy || dut.explosion_age !== 47) $fatal(1, "Blast ended early");
+        repeat (287) frame;
+        if (!dut.bomb_busy || dut.explosion_age !== 299) $fatal(1, "Blast ended early");
         injected_hits = 0;
         frame;
-        if (dut.bomb_busy) $fatal(1, "Explosion must finish at 48 ticks");
+        if (dut.bomb_busy) $fatal(1, "Explosion must finish at 300 ticks");
         frame;
-        if (dut.objects.px[2] !== 4832) $fatal(1, "World must resume after explosion");
+        if (dut.objects.px[2] !== 4800 || dut.state !== 3) $fatal(1, "World must stay stopped after fatal hit");
+        presses=1;step;presses=0;step;
         // Two simultaneous bombs consume the last two lives; both effects must finish.
         dut.objects.active = 0;
         step;
@@ -107,7 +108,7 @@ module tb_bombs;
         step;
         presses = 0;
         if (dut.state !== 3 || !dut.bomb_busy) $fatal(1, "Restart must wait for cinematic");
-        repeat (48) frame;
+        repeat (300) frame;
         if (dut.bomb_busy || dut.state !== 3 || dut.lives !== 0)
             $fatal(1, "Fatal explosion stuck or repeated damage");
         presses = 1;

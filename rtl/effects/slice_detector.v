@@ -3,7 +3,8 @@
 // 64-bit datapaths. The entire transaction emits ONE hit-mask pulse.
 module slice_detector #(
     parameter N = 8,
-    parameter VARIABLE_RADIUS = 0
+    parameter VARIABLE_RADIUS = 0,
+    parameter SIZE_SHIFT = 0
 ) (
     input                 clk,
     input                 reset,
@@ -34,14 +35,14 @@ module slice_detector #(
     reg [21:0] length_squared = 0;
     reg [26:0] distance_a = 0, distance_b = 0, endpoint_distance = 0;
     reg [49:0] cross_squared = 0;
-    reg [30:0] threshold = 0;
+    reg [35:0] threshold = 0;
     reg [N*5-1:0] saved_radii = 0;
-    wire [4:0] radius = VARIABLE_RADIUS ? saved_radii[index*5+:5] : 5'd18;
-    wire [9:0] radius_squared = radius * radius;
+    wire [7:0] radius = (VARIABLE_RADIUS ? {3'd0,saved_radii[index*5+:5]} : 8'd18) << SIZE_SHIFT;
+    wire [15:0] radius_squared = radius * radius;
     reg endpoint = 0;
     wire qualifies = saved_active[index] &&
         (endpoint ? endpoint_distance <= radius_squared :
-                    cross_squared <= {19'd0, threshold});
+                    cross_squared <= {14'd0, threshold});
     assign busy = stage != IDLE;
 
     always @(posedge clk) begin

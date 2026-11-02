@@ -1,7 +1,7 @@
 // Sherwin: title / pause / game-over screens for the 640x480 VGA output.
 // Self-contained: bitmap font (plain + chunky outlined), score digits, three layouts,
 // slice-to-choose mode boards. Output is a top layer: when ui_on is high, show ui_rgb.
-// State encoding: 0 title, 1 play, 2 pause, 3 over. Nothing is drawn while playing.
+// State encoding: 0 title, 1 play, 2 pause, 3 over. A live score HUD is drawn while playing.
 // mode: 0 = single player, 1 = second mode (versus). start_req: slice a board = start now.
  
 // ---------------------------------------------------------------- binary -> BCD
@@ -236,6 +236,17 @@ module ui_screens (
     endfunction
     localparam [11:0] OUTLINE = 12'h210;
  
+    // Live gameplay score, reusing the existing decimal converter and glyph ROM.
+    wire hud_score_on;
+    text_line #(.LEN(11), .K(1), .X0(16), .Y0(16)) gameplay_score (
+        .x(x), .y(y), .chars({"SCORE ", num5(sc_bcd)}), .on(hud_score_on)
+    );
+    wire hud_pause_hint;
+    text_line #(.LEN(12), .K(0), .X0(16), .Y0(36)) gameplay_pause_hint (
+        .x(x), .y(y), .chars("SW0 TO PAUSE"), .on(hud_pause_hint)
+    );
+    wire hud_panel = x >= 8 && x < 196 && y >= 8 && y < 50;
+
     // ---------------- Title text (state 0)
     wire [3:0] c_fr, c_sl, c_sg, c_bt, c_so, c_ss, c_vs, c_sv, c_hn;
     wire [2:0] r_fr, r_sl, r_sg, r_bt, r_so, r_ss, r_vs, r_sv, r_hn;
@@ -257,7 +268,7 @@ module ui_screens (
     wire f_pa, e_pa, f_ps, e_ps, f_ph, e_ph;
     fancy_text #(6, 3, 128, 150)  t_paused (.x(x), .y(y), .chars("PAUSED"), .fill(f_pa), .edge_on(e_pa), .cidx(c_pa), .grow(r_pa));
     fancy_text #(11, 2, 144, 235) t_pscore (.x(x), .y(y), .chars({"SCORE ", num5(sc_bcd)}), .fill(f_ps), .edge_on(e_ps), .cidx(c_ps), .grow(r_ps));
-    fancy_text #(19, 1, 168, 290) t_presm  (.x(x), .y(y), .chars("LOWER SW2 TO RESUME"), .fill(f_ph), .edge_on(e_ph), .cidx(c_ph), .grow(r_ph));
+    fancy_text #(19, 1, 168, 290) t_presm  (.x(x), .y(y), .chars("LOWER SW0 TO RESUME"), .fill(f_ph), .edge_on(e_ph), .cidx(c_ph), .grow(r_ph));
  
     // ---------------- Game-over text (state 3)
     wire [3:0] c_go, c_gs, c_gb, c_gn, c_gh;
@@ -373,6 +384,12 @@ module ui_screens (
                 if (f_vs) begin next_on = 1; next_rgb = pal(4'd3, r_vs); end
                 if (f_sv) begin next_on = 1; next_rgb = pal(4'd5, r_sv); end
                 if (f_hn) begin next_on = 1; next_rgb = pal(4'd5, r_hn); end
+            end
+            2'd1: begin
+                if (hud_panel) begin
+                    next_on = 1'b1;
+                    next_rgb = hud_score_on ? 12'hFE8 : hud_pause_hint ? 12'hFFF : 12'h210;
+                end
             end
             2'd2: begin
                 if (in_q) begin

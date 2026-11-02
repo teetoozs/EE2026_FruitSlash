@@ -3,7 +3,8 @@
 module pixel_compositor #(
     parameter N = 8,
     parameter VARIABLE_RADIUS = 0,
-    parameter DETAILED_ART = 0
+    parameter DETAILED_ART = 0,
+    parameter SIZE_SHIFT = 0
 ) (
     input         [     9:0] x,
     input         [     9:0] y,
@@ -22,7 +23,7 @@ module pixel_compositor #(
     input [N-1:0] explosion_active,
     input [N*16-1:0] explosion_x,
     input [N*16-1:0] explosion_y,
-    input [5:0] explosion_age,
+    input [8:0] explosion_age,
     input         [N*5-1:0] effect_radii,
     input         [2*N-1:0] halves_active,
     input         [2*N*16-1:0] halves_x,
@@ -31,12 +32,13 @@ module pixel_compositor #(
     input         [N*16-1:0] splash_x,
     input         [N*16-1:0] splash_y,
     input         [N*5-1:0] splash_age,
+    input wall_on, input [11:0] wall_rgb,
     output reg    [    11:0] rgb
 );
 
     wire splash_pixel;
     wire [11:0] splash_rgb;
-    splash_renderer #(.N(N), .FRUIT_PALETTE(DETAILED_ART)) juice (
+    (* keep_hierarchy = "yes" *) splash_renderer #(.N(N), .FRUIT_PALETTE(DETAILED_ART)) juice (
         .x(x),
         .y(y),
         .active(splash_active),
@@ -172,6 +174,7 @@ module pixel_compositor #(
             if (((x[6:0] + {3'b0, y[5:2]}) & 7'd31) == 0) rgb = 12'h432;
             if (y[5:0] < 2) rgb = 12'h321;
         end
+        if (wall_on) rgb = wall_rgb;
         if (splash_pixel) rgb = splash_rgb;
         qx           = 0;
         qy           = 0;
@@ -189,8 +192,8 @@ module pixel_compositor #(
             qy     = positions_y[i*16+:16];
             cx     = qx >>> 4;
             cy     = qy >>> 4;
-            dx     = $signed({1'b0, x}) - cx;
-            dy     = $signed({1'b0, y}) - cy;
+            dx     = ($signed({1'b0, x}) - cx) >>> SIZE_SHIFT;
+            dy     = ($signed({1'b0, y}) - cy) >>> SIZE_SHIFT;
             abs_x  = dx < 0 ? -dx : dx;
             abs_y  = dy < 0 ? -dy : dy;
             radius = VARIABLE_RADIUS ? radii[i*5+:5] : 5'd18;
@@ -259,8 +262,8 @@ module pixel_compositor #(
             qy = halves_y[i*16+:16];
             cx = qx >>> 4;
             cy = qy >>> 4;
-            dx = $signed({1'b0, x}) - cx;
-            dy = $signed({1'b0, y}) - cy;
+            dx = ($signed({1'b0, x}) - cx) >>> SIZE_SHIFT;
+            dy = ($signed({1'b0, y}) - cy) >>> SIZE_SHIFT;
             abs_x = dx < 0 ? -dx : dx;
             abs_y = dy < 0 ? -dy : dy;
             radius = VARIABLE_RADIUS ? effect_radii[(i/2)*5+:5] : 5'd18;

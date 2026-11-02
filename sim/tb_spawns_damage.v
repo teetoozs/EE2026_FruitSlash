@@ -87,10 +87,10 @@ module tb_spawns_damage;
             case (origin)
                 0: if ($signed(py) != 500 * 16 || physics.vy[0] >= 0) $fatal(1, "Bottom spawn");
                 1:
-                if ($signed(py) != -24 * 16 || physics.vx[0] != 0 || physics.vy[0] <= 0)
+                if ($signed(py) != -48 * 16 || physics.vx[0] != 0 || physics.vy[0] <= 0)
                     $fatal(1, "Top spawn");
-                2: if ($signed(px) != -24 * 16 || physics.vx[0] <= 0) $fatal(1, "Left spawn");
-                3: if ($signed(px) != 664 * 16 || physics.vx[0] >= 0) $fatal(1, "Right spawn");
+                2: if ($signed(px) != -48 * 16 || physics.vx[0] <= 0) $fatal(1, "Left spawn");
+                3: if ($signed(px) != 688 * 16 || physics.vx[0] >= 0) $fatal(1, "Right spawn");
             endcase
             repeat (12) begin
                 @(negedge clk);

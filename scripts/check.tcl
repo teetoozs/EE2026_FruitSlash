@@ -7,6 +7,9 @@ source [file join $root scripts create_project.tcl]
 cd $project_dir
 set_property xsim.simulate.runtime all [get_filesets sim_1]
 foreach {test marker} {
+    tb_bonus_view {PASS: bonus zoom and player-directed scars}
+    tb_scaled_slice {PASS: scaled multi-fruit collision}
+    tb_new_gameplay {PASS: waves misses bonus and wall splats}
     tb_effect_variants {PASS: variant effects}
     tb_bombs {PASS: bomb integration}
     tb_bomb_pixels {PASS: bomb pixels}

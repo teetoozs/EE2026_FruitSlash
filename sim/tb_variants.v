@@ -33,6 +33,7 @@ module tb_variants;
     ) renderer (
         .x           (x),
         .y           (y),
+        .wall_on(1'b0), .wall_rgb(12'b0),
         .video_on    (1'b1),
         .heart_levels(12'hFFF),
         .radii       (radius),
