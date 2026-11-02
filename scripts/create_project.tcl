@@ -7,13 +7,14 @@ proc collect {dir pattern} {
  }
  return $result
 }
-if {![info exists project_dir]} {set project_dir [file join $root build vivado]}
+if {![info exists project_dir]} {set project_dir [file join $root build vivado_refreshed]}
 if {[file exists [file join $project_dir fruit_slash.xpr]]} {
  open_project [file join $project_dir fruit_slash.xpr]
 } else {
  create_project fruit_slash $project_dir -part xc7a35tcpg236-1
 }
 set_property target_language Verilog [current_project]
+set_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE AreaOptimized_high [get_runs synth_1]
 add_files [collect [file join $root rtl] *.v]
 add_files [glob [file join $root vendor *.v]]
 add_files [glob [file join $root vendor *.vhd]]
@@ -32,6 +33,7 @@ add_files -fileset sim_1 [file join $root sim tb_effect_variants.v]
 add_files -fileset sim_1 [file join $root sim tb_new_gameplay.v]
 add_files -fileset sim_1 [file join $root sim tb_scaled_slice.v]
 add_files -fileset sim_1 [file join $root sim tb_bonus_view.v]
+add_files -fileset sim_1 [list [file join $root sim tb_slice_popups.v]]
 set_property top tb_core [get_filesets sim_1]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1

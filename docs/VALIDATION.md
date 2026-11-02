@@ -141,3 +141,10 @@ flip-flops (7.09%), 13 DSPs (14.44%), zero inferred latches.
 Reports: build/synth_1793521373; regression project: build/check_1793521386.
 Placement/routing, timing closure, bitstream generation and board testing remain
 outstanding.
+
+## White trail and slice popups (2 November 2026)
+Added a white fading blade trail, a per-swipe COMBO popup, and a BONUS SLICES counter driven by accepted bonus-award events. The bonus counter resets for each bonus round and remains visible for 45 gameplay ticks afterwards. Pause freezes popup timers; restart clears them. Both popups use the existing UI font. Gameplay scoring is unchanged.
+
+The generated project is now build/vivado_refreshed/fruit_slash.xpr; regenerate with scripts/create_project.tcl to include the added modules. GUI synthesis uses AreaOptimized_high.
+
+Validation: all 14 simulations passed, including trail continuity/fading and counter/reset/pause checks. Final shared-font glyph checks also passed via scripts/check_popups.tcl. Integrated RTL elaboration completed with zero errors and zero critical warnings. Full synthesis, routed timing and board testing remain outstanding for this version; earlier synthesis results above apply to the earlier design.
