@@ -112,3 +112,14 @@
 - bonus_fruit_view renders the same golden fruit at position_x/position_y (Q12.4),
   with radius in screen pixels. It is transparent outside the fruit/halves, so
   the existing wood, wall splats and other objects remain visible throughout.
+
+## Shared text rendering
+
+The title, pause and game-over text rectangles are mutually exclusive within each
+screen. ui_screens selects one character and local glyph coordinate for the
+current pixel and reuses one fancy_text renderer for all 17 labels. Palette,
+outline, position, scale and the existing one-clock output latency are retained.
+When editing layouts, keep these rectangles non-overlapping or explicitly define
+how overlapping labels are composited. The frozen pre-optimization UI exists only
+in sim/reference_ui_screens.v as a pixel-equivalence test oracle and is not added
+to the synthesis sources.

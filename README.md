@@ -50,7 +50,10 @@ Use Vivado 2025.2 or agree a common team version. Source
 The generated project is `build/vivado_refreshed/fruit_slash.xpr`.
 Run `scripts/check.tcl` for simulation and RTL elaboration.
 Run `scripts/synthesize.tcl` for full technology-mapped synthesis and utilization
-reports. RTL elaboration alone does not prove the design fits the FPGA.
+reports. Command-line synthesis uses the same AreaOptimized_high directive as the GUI.
+Run `scripts/implement.tcl` to check placement, routing, utilization and timing.
+It saves reports and a routed checkpoint and fails if timing or DRC fails.
+RTL elaboration alone does not prove the design fits the FPGA.
 Generated results stay in ignored `build/`; source files remain in the repository.
 
 Keep this repository private until course/vendor redistribution rules are checked.

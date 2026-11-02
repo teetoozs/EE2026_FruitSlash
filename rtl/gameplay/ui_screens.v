@@ -247,38 +247,257 @@ module ui_screens (
     );
     wire hud_panel = x >= 8 && x < 196 && y >= 8 && y < 50;
 
+    // Mutually exclusive text rectangles share one glyph/outline datapath.
+    reg [4:0] text_region;
+    reg [9:0] text_dx, text_dy;
+    reg [7:0] text_char;
+    reg [3:0] text_index;
+    reg [175:0] text_chars;
+    wire shared_fill, shared_edge;
+    wire [2:0] shared_row;
+    fancy_text #(1,0,0,0) shared_text (
+        .x(text_dx), .y(text_dy), .chars(text_char),
+        .fill(shared_fill), .edge_on(shared_edge), .cidx(), .grow(shared_row));
     // ---------------- Title text (state 0)
     wire [3:0] c_fr, c_sl, c_sg, c_bt, c_so, c_ss, c_vs, c_sv, c_hn;
     wire [2:0] r_fr, r_sl, r_sg, r_bt, r_so, r_ss, r_vs, r_sv, r_hn;
     wire f_fr, e_fr, f_sl, e_sl, f_sg, e_sg, f_bt, e_bt, f_so, e_so;
     wire f_ss, e_ss, f_vs, e_vs, f_sv, e_sv, f_hn, e_hn;
-    fancy_text #(5, 3, 40, 20)   t_fruit (.x(x), .y(y), .chars("FRUIT"), .fill(f_fr), .edge_on(e_fr), .cidx(c_fr), .grow(r_fr));
-    fancy_text #(5, 3, 270, 95)  t_slash (.x(x), .y(y), .chars("SLASH"), .fill(f_sl), .edge_on(e_sl), .cidx(c_sl), .grow(r_sl));
-    fancy_text #(21, 1, 152, 182) t_sign (.x(x), .y(y), .chars("SLASH A BOARD TO PLAY"), .fill(f_sg), .edge_on(e_sg), .cidx(c_sg), .grow(r_sg));
-    fancy_text #(10, 1, 240, 440) t_tbest (.x(x), .y(y), .chars({"BEST ", num5(bs_bcd)}), .fill(f_bt), .edge_on(e_bt), .cidx(c_bt), .grow(r_bt));
-    fancy_text #(4, 2, 111, 320) t_solo  (.x(x), .y(y), .chars("SOLO"), .fill(f_so), .edge_on(e_so), .cidx(c_so), .grow(r_so));
-    fancy_text #(8, 1, 111, 360) t_solos (.x(x), .y(y), .chars("1 PLAYER"), .fill(f_ss), .edge_on(e_ss), .cidx(c_ss), .grow(r_ss));
-    fancy_text #(6, 2, 369, 320) t_vs    (.x(x), .y(y), .chars("VERSUS"), .fill(f_vs), .edge_on(e_vs), .cidx(c_vs), .grow(r_vs));
-    fancy_text #(5, 1, 425, 360) t_vss   (.x(x), .y(y), .chars("1 V 1"), .fill(f_sv), .edge_on(e_sv), .cidx(c_sv), .grow(r_sv));
-    fancy_text #(22, 1, 144, 410) t_hint (.x(x), .y(y), .chars("OR PRESS BTNC FOR SOLO"), .fill(f_hn), .edge_on(e_hn), .cidx(c_hn), .grow(r_hn));
+    assign f_fr=(text_region==1) && shared_fill;
+    assign e_fr=(text_region==1) && shared_edge;
+    assign c_fr=text_index;
+    assign r_fr=shared_row;
+    assign f_sl=(text_region==2) && shared_fill;
+    assign e_sl=(text_region==2) && shared_edge;
+    assign c_sl=text_index;
+    assign r_sl=shared_row;
+    assign f_sg=(text_region==3) && shared_fill;
+    assign e_sg=(text_region==3) && shared_edge;
+    assign c_sg=text_index;
+    assign r_sg=shared_row;
+    assign f_bt=(text_region==4) && shared_fill;
+    assign e_bt=(text_region==4) && shared_edge;
+    assign c_bt=text_index;
+    assign r_bt=shared_row;
+    assign f_so=(text_region==5) && shared_fill;
+    assign e_so=(text_region==5) && shared_edge;
+    assign c_so=text_index;
+    assign r_so=shared_row;
+    assign f_ss=(text_region==6) && shared_fill;
+    assign e_ss=(text_region==6) && shared_edge;
+    assign c_ss=text_index;
+    assign r_ss=shared_row;
+    assign f_vs=(text_region==7) && shared_fill;
+    assign e_vs=(text_region==7) && shared_edge;
+    assign c_vs=text_index;
+    assign r_vs=shared_row;
+    assign f_sv=(text_region==8) && shared_fill;
+    assign e_sv=(text_region==8) && shared_edge;
+    assign c_sv=text_index;
+    assign r_sv=shared_row;
+    assign f_hn=(text_region==9) && shared_fill;
+    assign e_hn=(text_region==9) && shared_edge;
+    assign c_hn=text_index;
+    assign r_hn=shared_row;
  
     // ---------------- Pause text (state 2)
     wire [3:0] c_pa, c_ps, c_ph;
     wire [2:0] r_pa, r_ps, r_ph;
     wire f_pa, e_pa, f_ps, e_ps, f_ph, e_ph;
-    fancy_text #(6, 3, 128, 150)  t_paused (.x(x), .y(y), .chars("PAUSED"), .fill(f_pa), .edge_on(e_pa), .cidx(c_pa), .grow(r_pa));
-    fancy_text #(11, 2, 144, 235) t_pscore (.x(x), .y(y), .chars({"SCORE ", num5(sc_bcd)}), .fill(f_ps), .edge_on(e_ps), .cidx(c_ps), .grow(r_ps));
-    fancy_text #(19, 1, 168, 290) t_presm  (.x(x), .y(y), .chars("LOWER SW0 TO RESUME"), .fill(f_ph), .edge_on(e_ph), .cidx(c_ph), .grow(r_ph));
+    assign f_pa=(text_region==10) && shared_fill;
+    assign e_pa=(text_region==10) && shared_edge;
+    assign c_pa=text_index;
+    assign r_pa=shared_row;
+    assign f_ps=(text_region==11) && shared_fill;
+    assign e_ps=(text_region==11) && shared_edge;
+    assign c_ps=text_index;
+    assign r_ps=shared_row;
+    assign f_ph=(text_region==12) && shared_fill;
+    assign e_ph=(text_region==12) && shared_edge;
+    assign c_ph=text_index;
+    assign r_ph=shared_row;
  
     // ---------------- Game-over text (state 3)
     wire [3:0] c_go, c_gs, c_gb, c_gn, c_gh;
     wire [2:0] r_go, r_gs, r_gb, r_gn, r_gh;
     wire f_go, e_go, f_gs, e_gs, f_gb, e_gb, f_gn, e_gn, f_gh, e_gh;
-    fancy_text #(9, 3, 32, 50)    t_over  (.x(x), .y(y), .chars("GAME OVER"), .fill(f_go), .edge_on(e_go), .cidx(c_go), .grow(r_go));
-    fancy_text #(11, 2, 144, 160) t_gscore (.x(x), .y(y), .chars({"SCORE ", num5(sc_bcd)}), .fill(f_gs), .edge_on(e_gs), .cidx(c_gs), .grow(r_gs));
-    fancy_text #(11, 2, 144, 205) t_gbest  (.x(x), .y(y), .chars({"BEST  ", num5(bs_bcd)}), .fill(f_gb), .edge_on(e_gb), .cidx(c_gb), .grow(r_gb));
-    fancy_text #(9, 2, 176, 255)  t_gnew   (.x(x), .y(y), .chars("NEW BEST!"), .fill(f_gn), .edge_on(e_gn), .cidx(c_gn), .grow(r_gn));
-    fancy_text #(19, 1, 168, 375) t_gretry (.x(x), .y(y), .chars("PRESS BTNC TO RETRY"), .fill(f_gh), .edge_on(e_gh), .cidx(c_gh), .grow(r_gh));
+    assign f_go=(text_region==13) && shared_fill;
+    assign e_go=(text_region==13) && shared_edge;
+    assign c_go=text_index;
+    assign r_go=shared_row;
+    assign f_gs=(text_region==14) && shared_fill;
+    assign e_gs=(text_region==14) && shared_edge;
+    assign c_gs=text_index;
+    assign r_gs=shared_row;
+    assign f_gb=(text_region==15) && shared_fill;
+    assign e_gb=(text_region==15) && shared_edge;
+    assign c_gb=text_index;
+    assign r_gb=shared_row;
+    assign f_gn=(text_region==16) && shared_fill;
+    assign e_gn=(text_region==16) && shared_edge;
+    assign c_gn=text_index;
+    assign r_gn=shared_row;
+    assign f_gh=(text_region==17) && shared_fill;
+    assign e_gh=(text_region==17) && shared_edge;
+    assign c_gh=text_index;
+    assign r_gh=shared_row;
+    always @(*) begin
+        text_region=0;text_dx=0;text_dy=0;text_char=8'h20;
+        text_index=0;text_chars=0;
+        if(state==2'd0 && x>=10'd40 && x<10'd360 &&
+           y>=10'd20 && y<10'd92) begin
+            text_region=5'd1;
+            text_dx=((x-10'd40)>>3) & 10'd7;
+            text_dy=(y-10'd20)>>3;
+            text_index=(x-10'd40)>>6;
+            text_chars="FRUIT";
+            text_char=text_chars[(5-1-((x-10'd40)>>6))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd270 && x<10'd590 &&
+           y>=10'd95 && y<10'd167) begin
+            text_region=5'd2;
+            text_dx=((x-10'd270)>>3) & 10'd7;
+            text_dy=(y-10'd95)>>3;
+            text_index=(x-10'd270)>>6;
+            text_chars="SLASH";
+            text_char=text_chars[(5-1-((x-10'd270)>>6))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd152 && x<10'd488 &&
+           y>=10'd182 && y<10'd200) begin
+            text_region=5'd3;
+            text_dx=((x-10'd152)>>1) & 10'd7;
+            text_dy=(y-10'd182)>>1;
+            text_index=(x-10'd152)>>4;
+            text_chars="SLASH A BOARD TO PLAY";
+            text_char=text_chars[(21-1-((x-10'd152)>>4))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd240 && x<10'd400 &&
+           y>=10'd440 && y<10'd458) begin
+            text_region=5'd4;
+            text_dx=((x-10'd240)>>1) & 10'd7;
+            text_dy=(y-10'd440)>>1;
+            text_index=(x-10'd240)>>4;
+            text_chars={"BEST ", num5(bs_bcd)};
+            text_char=text_chars[(10-1-((x-10'd240)>>4))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd111 && x<10'd239 &&
+           y>=10'd320 && y<10'd356) begin
+            text_region=5'd5;
+            text_dx=((x-10'd111)>>2) & 10'd7;
+            text_dy=(y-10'd320)>>2;
+            text_index=(x-10'd111)>>5;
+            text_chars="SOLO";
+            text_char=text_chars[(4-1-((x-10'd111)>>5))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd111 && x<10'd239 &&
+           y>=10'd360 && y<10'd378) begin
+            text_region=5'd6;
+            text_dx=((x-10'd111)>>1) & 10'd7;
+            text_dy=(y-10'd360)>>1;
+            text_index=(x-10'd111)>>4;
+            text_chars="1 PLAYER";
+            text_char=text_chars[(8-1-((x-10'd111)>>4))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd369 && x<10'd561 &&
+           y>=10'd320 && y<10'd356) begin
+            text_region=5'd7;
+            text_dx=((x-10'd369)>>2) & 10'd7;
+            text_dy=(y-10'd320)>>2;
+            text_index=(x-10'd369)>>5;
+            text_chars="VERSUS";
+            text_char=text_chars[(6-1-((x-10'd369)>>5))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd425 && x<10'd505 &&
+           y>=10'd360 && y<10'd378) begin
+            text_region=5'd8;
+            text_dx=((x-10'd425)>>1) & 10'd7;
+            text_dy=(y-10'd360)>>1;
+            text_index=(x-10'd425)>>4;
+            text_chars="1 V 1";
+            text_char=text_chars[(5-1-((x-10'd425)>>4))*8+:8];
+        end
+        if(state==2'd0 && x>=10'd144 && x<10'd496 &&
+           y>=10'd410 && y<10'd428) begin
+            text_region=5'd9;
+            text_dx=((x-10'd144)>>1) & 10'd7;
+            text_dy=(y-10'd410)>>1;
+            text_index=(x-10'd144)>>4;
+            text_chars="OR PRESS BTNC FOR SOLO";
+            text_char=text_chars[(22-1-((x-10'd144)>>4))*8+:8];
+        end
+        if(state==2'd2 && x>=10'd128 && x<10'd512 &&
+           y>=10'd150 && y<10'd222) begin
+            text_region=5'd10;
+            text_dx=((x-10'd128)>>3) & 10'd7;
+            text_dy=(y-10'd150)>>3;
+            text_index=(x-10'd128)>>6;
+            text_chars="PAUSED";
+            text_char=text_chars[(6-1-((x-10'd128)>>6))*8+:8];
+        end
+        if(state==2'd2 && x>=10'd144 && x<10'd496 &&
+           y>=10'd235 && y<10'd271) begin
+            text_region=5'd11;
+            text_dx=((x-10'd144)>>2) & 10'd7;
+            text_dy=(y-10'd235)>>2;
+            text_index=(x-10'd144)>>5;
+            text_chars={"SCORE ", num5(sc_bcd)};
+            text_char=text_chars[(11-1-((x-10'd144)>>5))*8+:8];
+        end
+        if(state==2'd2 && x>=10'd168 && x<10'd472 &&
+           y>=10'd290 && y<10'd308) begin
+            text_region=5'd12;
+            text_dx=((x-10'd168)>>1) & 10'd7;
+            text_dy=(y-10'd290)>>1;
+            text_index=(x-10'd168)>>4;
+            text_chars="LOWER SW0 TO RESUME";
+            text_char=text_chars[(19-1-((x-10'd168)>>4))*8+:8];
+        end
+        if(state==2'd3 && x>=10'd32 && x<10'd608 &&
+           y>=10'd50 && y<10'd122) begin
+            text_region=5'd13;
+            text_dx=((x-10'd32)>>3) & 10'd7;
+            text_dy=(y-10'd50)>>3;
+            text_index=(x-10'd32)>>6;
+            text_chars="GAME OVER";
+            text_char=text_chars[(9-1-((x-10'd32)>>6))*8+:8];
+        end
+        if(state==2'd3 && x>=10'd144 && x<10'd496 &&
+           y>=10'd160 && y<10'd196) begin
+            text_region=5'd14;
+            text_dx=((x-10'd144)>>2) & 10'd7;
+            text_dy=(y-10'd160)>>2;
+            text_index=(x-10'd144)>>5;
+            text_chars={"SCORE ", num5(sc_bcd)};
+            text_char=text_chars[(11-1-((x-10'd144)>>5))*8+:8];
+        end
+        if(state==2'd3 && x>=10'd144 && x<10'd496 &&
+           y>=10'd205 && y<10'd241) begin
+            text_region=5'd15;
+            text_dx=((x-10'd144)>>2) & 10'd7;
+            text_dy=(y-10'd205)>>2;
+            text_index=(x-10'd144)>>5;
+            text_chars={"BEST  ", num5(bs_bcd)};
+            text_char=text_chars[(11-1-((x-10'd144)>>5))*8+:8];
+        end
+        if(state==2'd3 && x>=10'd176 && x<10'd464 &&
+           y>=10'd255 && y<10'd291) begin
+            text_region=5'd16;
+            text_dx=((x-10'd176)>>2) & 10'd7;
+            text_dy=(y-10'd255)>>2;
+            text_index=(x-10'd176)>>5;
+            text_chars="NEW BEST!";
+            text_char=text_chars[(9-1-((x-10'd176)>>5))*8+:8];
+        end
+        if(state==2'd3 && x>=10'd168 && x<10'd472 &&
+           y>=10'd375 && y<10'd393) begin
+            text_region=5'd17;
+            text_dx=((x-10'd168)>>1) & 10'd7;
+            text_dy=(y-10'd375)>>1;
+            text_index=(x-10'd168)>>4;
+            text_chars="PRESS BTNC TO RETRY";
+            text_char=text_chars[(19-1-((x-10'd168)>>4))*8+:8];
+        end
+    end
     wire new_best = (score != 0) && (score >= best_score);
  
     // ---------------- Mode boards (title): slice one to choose and start at once

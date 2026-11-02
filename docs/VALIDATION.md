@@ -204,3 +204,22 @@ build/synth_1793609521. This merged design is not hardware-ready under those
 settings. The upstream GUI project selects AreaOptimized_high; that separate
 strategy, placement/routing and board operation have not been validated here.
 The PR conflicts are resolved; area optimization remains a separate hardware task.
+
+## Shared UI renderer and routed implementation - 2 November 2026
+
+Replaced duplicated mutually exclusive UI text renderers with one shared renderer.
+All 15 existing simulations and RTL elaboration pass (build/check_1793610848).
+The additional pixel-equivalence simulation passes across all four UI states and
+three score cases, comparing 3,686,400 pixels (build/ui_check_1793610945).
+
+Vivado 2025.2 implementation with AreaOptimized_high completed placement and
+routing in build/implement_1793610886; routed.dcp was saved. Final utilization:
+19,327 LUTs / 20,800 (92.92%), 5,153 registers (12.39%), 53 DSPs (58.89%).
+Default DRC has no errors; 122 DSP pipelining warnings remain.
+
+Timing FAILS at the constrained 100 MHz clock: setup WNS -10.961 ns,
+TNS -7466.407 ns, 4,898 failing endpoints. Worst reported setup path runs from
+objects/active_reg[7] to game/best_score_reg[2]/CE. Hold timing passes with
+WHS +0.068 ns. Area now fits, but the design is not timing-closed or ready for
+reliable board operation. No bitstream was generated and no board test performed.
+See timing.rpt, utilization.rpt and drc.rpt in the implementation directory.
