@@ -61,18 +61,20 @@
   slot, even on a coincident tick. Bombs do not create juice. Pause/game over freezes
   the splash age; reset/new_round clears it. Detailed juice palettes follow slot colours, with red watermelon juice.
 - Compositor priority: background, juice splashes, intact objects, fruit halves,
-  dimming during a bomb cinematic, explosions, cursor, top-right hearts. Debug state stripes are removed.
+  cursor and top-right hearts. The top-level bomb overlay preserves pixels outside
+  its local mask; it uses RADIUS=36 to match the doubled-size live bombs.
 - bomb_effects snapshots all bomb hits and Q12.4 origins on acceptance. explosion_age
-  is a shared 6-bit counter: 0..11 hit stop (0.2 seconds), 12..47 blast (0.6 seconds).
+  is a shared 9-bit counter: 0..179 opening cracks, 180..209 local burst,
+  210..239 fading fragments (four seconds total at 60 Hz).
   explosion_active is one bit per captured bomb; busy is its reduction OR.
 - The initial hit removes objects and deducts lives once. During bomb_busy, top-level
   hit masks and slice detection are blocked, physics ticks and fruit effects freeze,
   and game_controller holds score/combo via effects_busy. The bomb-hit tick itself
-  also suppresses world movement. VGA timing and cursor input continue normally.
+  also suppresses world movement. VGA timing and cursor input continue normally, but visible cursor/hearts are held.
 - Bomb animation advances on game_tick independently of playing, including game over.
   SW0 pauses the cinematic even after a fatal hit. Reset cancels it immediately.
   Start/restart is ignored while effects_busy; press again after the blast finishes.
-  Nonfatal gameplay resumes automatically when the 48-tick sequence completes.
+  Nonfatal gameplay resumes automatically when the 240-tick sequence completes.
 - The old effect_x/effect_y/ttl single-flash interface has been removed.
   Full planned layer order is not yet implemented.
 - Keep interface changes in this document and notify the consuming module owner.
@@ -93,3 +95,20 @@
 - mode is currently unused. The second game mode must read it.
 - ui_screens also provides shared modules used by the OLED panel: bin2bcd,
   glyph35, font5x7, text_line and fancy_text.
+## Spawned bonus fruit
+
+- Ten clean fruit cuts launch one golden fruit (36-pixel screen radius) into the
+  normal world. A missed bonus fruit disappears without a life penalty.
+- streak_bonus.visible includes flight, zoom, cutting and falling. active covers
+  only zoom/cutting/falling and freezes the regular world. accepting enables the
+  separate swept collision detector during flight and cutting only.
+- Cutting the flying fruit captures its current position and starts a 30-tick
+  move to (320,240). Radius grows to 54 pixels, exactly 50% larger. The 300-tick
+  cutting timer starts only after arrival. Distinct moving swipes award 25 points
+  subject to the existing six-tick cooldown and release/exit latch.
+- When the timer expires, falling remains active for 90 ticks while two halves
+  separate sideways and fall under gravity. Normal gameplay resumes afterward.
+  Manual pause freezes all bonus stages. Reset/new round/game over clears it.
+- bonus_fruit_view renders the same golden fruit at position_x/position_y (Q12.4),
+  with radius in screen pixels. It is transparent outside the fruit/halves, so
+  the existing wood, wall splats and other objects remain visible throughout.

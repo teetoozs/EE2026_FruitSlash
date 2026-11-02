@@ -141,3 +141,43 @@ flip-flops (7.09%), 13 DSPs (14.44%), zero inferred latches.
 Reports: build/synth_1793521373; regression project: build/check_1793521386.
 Placement/routing, timing closure, bitstream generation and board testing remain
 outstanding.
+
+## Compact four-second bomb cinematic - 2 November 2026
+
+On develop/Yuncong, replaced the full-screen five-second grey smoke with a
+transparent local effect. The original-size bomb stays at its captured position:
+ages 0..179 progressively open and brighten seams with short pale-grey beams;
+180..209 show a local flash and eight small shell fragments; 210..239 fade the
+fragments. At 60 Hz this is four seconds, excluding manual pauses. Physics,
+fruit effects, visible cursor and heart levels stay frozen during the cinematic.
+Pixels outside the effect retain the scene; game-over UI waits until it finishes.
+
+Vivado 2025.2: all 13 check.tcl simulations and RTL elaboration PASS. The expanded
+tb_bombs additionally PASSes cursor/heart freeze and transparent-scene assertions.
+Mapped synthesis completes with zero errors or critical warnings; DRC reports
+DSP pipelining advisories. Full branch usage is 20,278 LUTs (97.49%), 4,116
+registers (9.89%) and 48 DSPs (53.33%). Resource headroom is limited; synthesis
+does not establish placement/routing feasibility or timing closure.
+Regression: build/check_1793607692; additional freeze regression:
+build/bomb_check_1793607957; synthesis: build/synth_1793607746.
+Bitstream generation, timing closure and physical-board visual acceptance have
+not been performed for this change.
+
+## Spawned bonus fruit and preserved scene - 2 November 2026
+
+Ten clean cuts now launch a golden fruit into normal gameplay. Cutting that fruit
+starts a 30-tick centring animation, increasing its radius from 36 to 54 pixels.
+The five-second repeat-cut timer starts on arrival. The wood, other fruit and wall
+splats remain visible. At expiry the fruit separates into two halves, which fall
+for 90 ticks before ordinary gameplay resumes. All stages respect pause; reset,
+new round and game over cancel the bonus. The earlier bomb changes are retained.
+
+All 14 simulations in scripts/check.tcl and top-level RTL elaboration PASS.
+Coverage includes spawned-fruit triggering, transparent scene composition, exact
+50% enlargement, timer sequencing, pause, repeated swipe awards, split masks and
+resumption. Mapped synthesis PASSes with zero errors or critical warnings; DRC
+contains DSP pipelining advisories. Full design usage: 20,593 LUTs (99.00%), 4,209
+registers (10.12%) and 48 DSPs (53.33%). Only 207 LUTs remain, so placement/routing
+and timing feasibility are unverified and additional features need resource care.
+Regression: build/check_1793608726. Synthesis: build/synth_1793608681.
+No bitstream or physical-board visual test was performed for this change.

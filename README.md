@@ -31,8 +31,9 @@ four-feature submission. Advanced features are explicitly documented as TODOs.
 - Fruit radii 12/18/24; large watermelons need three separate held swipes.
 - Swept-segment/circle slicing, object removal and simultaneous hit masks.
 - Score, per-stroke combo bonus, three lives, pause, restart and session best.
+- Ten clean cuts spawn a golden bonus fruit: slice it to centre/zoom by 50%, swipe for five seconds, then watch its halves fall before play resumes.
 - Two falling pieces per destroyed fruit, preserving size, slot colour and watermelon rind.
-- Bomb hit stop, expanding shockwave and eight-direction fragments; fatal hits finish animating.
+- Four-second bomb freeze with gradually opening grey-lit cracks and a compact fragment burst; fatal hits finish animating.
 - Animated juice bursts with spreading droplets and a shrinking, fading centre.
 - OLED animated hearts, difficulty/combo bars and seven-segment score.
 

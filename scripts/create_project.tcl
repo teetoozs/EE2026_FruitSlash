@@ -32,6 +32,7 @@ add_files -fileset sim_1 [file join $root sim tb_effect_variants.v]
 add_files -fileset sim_1 [file join $root sim tb_new_gameplay.v]
 add_files -fileset sim_1 [file join $root sim tb_scaled_slice.v]
 add_files -fileset sim_1 [file join $root sim tb_bonus_view.v]
+add_files -fileset sim_1 [file join $root sim tb_bonus_scene.v]
 set_property top tb_core [get_filesets sim_1]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
