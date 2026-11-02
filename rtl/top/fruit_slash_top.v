@@ -311,8 +311,19 @@ module fruit_slash_top (
         .explosion_age(explosion_age),
         .rgb         (rgb)
     );
+    wire trail_on, popup_on;
+    wire [11:0] trail_rgb, popup_rgb;
+    white_blade_trail white_trail(
+      .clk(clk),.reset(reset||new_round),.game_tick(game_tick),
+      .enabled(playing&&!bomb_busy),.blade_event(blade_event),.slash_active(slash_active),
+      .previous_x(previous_x),.previous_y(previous_y),.cursor_x(cursor_x),.cursor_y(cursor_y),
+      .pixel_x(pixel_x),.pixel_y(pixel_y),.pixel_on(trail_on),.rgb(trail_rgb));
+    slice_popups popups(.clk(clk),.reset(reset||new_round),.tick(game_tick),
+      .playing(playing),.bomb_busy(bomb_busy),.bonus_active(bonus_active),.bonus_award(bonus_award),
+      .combo(combo),.x(pixel_x),.y(pixel_y),.pixel_on(popup_on),.rgb(popup_rgb));
     assign {vgaRed, vgaGreen, vgaBlue} = !video_on ? 12'h000 :
-      bomb_busy ? (blast_view_on ? blast_view_rgb : rgb) : ui_on ? ui_rgb : bonus_bar ? 12'hFF4 :
+      bomb_busy ? (blast_view_on ? blast_view_rgb : rgb) : popup_on ? popup_rgb :
+      (trail_on && pixel_y>=48) ? trail_rgb : ui_on ? ui_rgb : bonus_bar ? 12'hFF4 :
       bonus_visible && bonus_cursor ? (slash_active ? 12'hF00 : 12'hFFF) :
       bonus_view_on ? bonus_view_rgb : rgb;
     board_displays board (

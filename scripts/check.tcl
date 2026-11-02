@@ -8,6 +8,7 @@ cd $project_dir
 set_property xsim.simulate.runtime all [get_filesets sim_1]
 foreach {test marker} {
     tb_bonus_scene {PASS: spawned bonus scene and resume}
+    tb_slice_popups {PASS: white trail and slice popups}
     tb_bonus_view {PASS: bonus zoom and player-directed scars}
     tb_scaled_slice {PASS: scaled multi-fruit collision}
     tb_new_gameplay {PASS: waves misses bonus and wall splats}

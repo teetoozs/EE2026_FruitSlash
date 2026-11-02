@@ -181,3 +181,26 @@ registers (10.12%) and 48 DSPs (53.33%). Only 207 LUTs remain, so placement/rout
 and timing feasibility are unverified and additional features need resource care.
 Regression: build/check_1793608726. Synthesis: build/synth_1793608681.
 No bitstream or physical-board visual test was performed for this change.
+## White trail and slice popups (2 November 2026)
+Added a white fading blade trail, a per-swipe COMBO popup, and a BONUS SLICES counter driven by accepted bonus-award events. The bonus counter resets for each bonus round and remains visible for 45 gameplay ticks afterwards. Pause freezes popup timers; restart clears them. Both popups use the existing UI font. Gameplay scoring is unchanged.
+
+The generated project is now build/vivado_refreshed/fruit_slash.xpr; regenerate with scripts/create_project.tcl to include the added modules. GUI synthesis uses AreaOptimized_high.
+
+Validation: all 14 simulations passed, including trail continuity/fading and counter/reset/pause checks. Final shared-font glyph checks also passed via scripts/check_popups.tcl. Integrated RTL elaboration completed with zero errors and zero critical warnings. Full synthesis, routed timing and board testing remain outstanding for this version; earlier synthesis results above apply to the earlier design.
+
+## PR #4 integration with latest main - 2 November 2026
+
+Merged origin/main 2b51b98 into develop/Yuncong. Retained the four-second local
+bomb cinematic and spawned/zooming bonus fruit with its wood background, while
+adding the upstream white blade trail and combo/bonus-slice popups. Kept both
+regression suites, all validation history and the refreshed GUI project settings.
+
+All 15 simulations and top-level RTL elaboration PASS in build/check_1793609490.
+The default-directive scripts/synthesize.tcl run completes synthesis with zero
+compiler errors or critical warnings, but post-synthesis DRC FAILS UTLZ-1:
+23,170 LUTs are required versus 20,800 available (111.39%, 2,370 over capacity).
+Registers: 5,256 (12.63%); DSPs: 48 (53.33%). Reports are in
+build/synth_1793609521. This merged design is not hardware-ready under those
+settings. The upstream GUI project selects AreaOptimized_high; that separate
+strategy, placement/routing and board operation have not been validated here.
+The PR conflicts are resolved; area optimization remains a separate hardware task.
