@@ -47,8 +47,9 @@ module slice_popups (
   line_text="COMBO X000!         ";
   // Explicit byte positions avoid string padding changing the digit offsets.
   if(show_bonus)
+   // Exactly 20 characters: avoids dropping the leading B from BONUS.
    line_text={"BONUS SLICES  ",4'h3,bonus_digits[19:16],4'h3,bonus_digits[15:12],
-       4'h3,bonus_digits[11:8],4'h3,bonus_digits[7:4],4'h3,bonus_digits[3:0],"  "};
+       4'h3,bonus_digits[11:8],4'h3,bonus_digits[7:4],4'h3,bonus_digits[3:0]," "};
   else
    line_text={"COMBO X",4'h3,combo_digits[11:8],4'h3,combo_digits[7:4],4'h3,combo_digits[3:0],"!         "};
   character=8'h20;
