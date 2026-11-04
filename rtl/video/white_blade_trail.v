@@ -1,7 +1,7 @@
 // Compact blade trail for the Basys3.
-// Sixteen samples spaced two Bresenham steps apart form a visible silver trail. Keeping
-// every step connects even diagonal strokes and one-pixel tips without adding
-// more parallel sample renderers. Radius controls the body's tapered width.
+// Sixteen Bresenham samples form a 64-pixel silver blade. The outer samples
+// are one pixel wide and the middle is two pixels wide, giving both tips a
+// clean point without the 64-way per-pixel hardware used by the earlier trail.
 module white_blade_trail (
     input clk,
     input reset,
@@ -23,14 +23,13 @@ module white_blade_trail (
     reg [9:0] points_y [0:POINTS-1];
     reg [3:0] life [0:POINTS-1];
     reg [3:0] head = 0;
-    wire [3:0] newest = head - 4'd1;
     reg [4:0] valid_count = 0;
-    reg spacing=0;
     reg walking = 0;
     reg [9:0] walk_x = 0, walk_y = 0, end_x = 0, end_y = 0;
     reg signed [11:0] dx = 0, dy = 0, error = 0;
     reg signed [11:0] next_error;
     reg [9:0] next_x, next_y;
+    reg [1:0] spacing = 0;
     wire signed [12:0] twice_error = $signed(error) * 2;
     wire signed [11:0] distance_x = cursor_x >= previous_x ?
         $signed({2'b0, cursor_x}) - $signed({2'b0, previous_x}) :
@@ -58,7 +57,8 @@ module white_blade_trail (
         if (reset || !enabled) begin
             head <= 0;
             valid_count <= 0;
-            walking <= 0;spacing<=0;
+            walking <= 0;
+            spacing <= 0;
             for (i = 0; i < POINTS; i = i + 1) begin
                 points_x[i] <= 0;
                 points_y[i] <= 0;
@@ -69,7 +69,6 @@ module white_blade_trail (
                 for (i = 0; i < POINTS; i = i + 1)
                     if (life[i] != 0) life[i] <= life[i] - 1'b1;
             if (blade_event && slash_active && (cursor_x != previous_x || cursor_y != previous_y)) begin
-                spacing<=0;
                 walk_x <= previous_x;
                 walk_y <= previous_y;
                 end_x <= cursor_x;
@@ -77,23 +76,19 @@ module white_blade_trail (
                 dx <= distance_x;
                 dy <= -distance_y;
                 error <= distance_x - distance_y;
+                spacing <= 0;
                 walking <= 1;
             end else if (!slash_active) begin
                 walking <= 0;
             end else if (walking) begin
-                // Adjacent motion events share an endpoint. Do not store it
-                // twice: duplicate samples would shorten the visible stroke.
-                spacing<=~spacing;
-                if ((!spacing || (walk_x==end_x && walk_y==end_y)) && (valid_count == 0 ||
-                    walk_x != points_x[newest] ||
-                    walk_y != points_y[newest] ||
-                    life[newest] == 0)) begin
+                if (spacing == 0 || (walk_x == end_x && walk_y == end_y)) begin
                     points_x[head] <= walk_x;
                     points_y[head] <= walk_y;
                     life[head] <= 10;
                     head <= head + 1'b1;
                     if (valid_count < POINTS) valid_count <= valid_count + 1'b1;
                 end
+                spacing <= spacing + 1'b1;
                 walk_x <= next_x;
                 walk_y <= next_y;
                 error <= next_error;
@@ -105,9 +100,7 @@ module white_blade_trail (
     // Palette flags are cheaper than comparing sixteen RGB values.
     // Together they create a white highlight, silver body and blue-grey edge.
     reg [9:0] abs_x, abs_y;
-    // Two 10-bit absolute differences sum to at most 2046. Preserve all
-    // eleven bits so distant pixels cannot wrap into the blade's radius.
-    reg [10:0] distance;
+    reg [10:0] distance; // Preserve full Manhattan distance; prevent wraparound.
     reg [3:0] age_rank, radius;
     reg highlight, silver, shadow;
     always @(*) begin

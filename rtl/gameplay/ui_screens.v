@@ -673,7 +673,7 @@ module ui_screens (
 endmodule
 // Settings and a procedural katana cursor share the existing source file.
 module cursor_settings(
- input clk,reset,back,tick,blade_event,menu_locked,input [1:0] state,
+ input clk,reset,back,tick,blade_event,menu_locked,cut_event,input [1:0] state,
  output menu_busy,
  input [9:0] x,y,cx,cy,px,py,input held,
  output reg [1:0] sensitivity=0,output reg opened=0,
@@ -683,6 +683,7 @@ module cursor_settings(
  wire settings_done,settings_fx;wire [11:0] settings_fx_rgb;
  reg last_held=0;
  reg [2:0] swing=0;
+ reg old_cut=0,old_menu_busy=0;
  wire click=held && !last_held;
  wire button_hover,settings_fruit;
  menu_fruit_target #(.CX(512),.CY(280),.R(30)) settings_target(
@@ -691,7 +692,7 @@ module cursor_settings(
  wire gain_hover=cx>=176 && cx<464 && cy>=220 && cy<264;
  wire back_hover=cx>=240 && cx<400 && cy>=320 && cy<352;
  always @(posedge clk) begin
-  last_held<=held;
+  last_held<=held;old_cut<=cut_event;old_menu_busy<=menu_locked;
   if(reset) begin opened<=0;sensitivity<=0;swing<=0;end
   else begin
    if(back || state!=0) opened<=0;
@@ -700,8 +701,8 @@ module cursor_settings(
     if(opened && back_hover) opened<=0;
     else if(opened && gain_hover) sensitivity<=sensitivity+1'b1;
    end
-   if(!held) swing<=0;
-   else if(tick && (cx!=px || cy!=py)) swing<=swing+1'b1;
+   if((cut_event && !old_cut) || (menu_locked && !old_menu_busy) || settings_cut) swing<=7;
+   else if(tick && swing!=0) swing<=swing-1'b1;
   end
  end
 
@@ -733,7 +734,7 @@ module cursor_settings(
  wire signed [11:0] dx=$signed({2'b0,x})-$signed({2'b0,cx});
  wire signed [11:0] dy=$signed({2'b0,y})-$signed({2'b0,cy});
  // Tilt the drawn blade during movement, with the grip anchored to the cursor.
- wire signed [11:0] across=held ? dx+(swing[2] ? -(dy>>>1):(dy>>>1)):dx;
+ wire signed [11:0] across=swing!=0 ? dx+(swing[2] ? -(dy>>>1):(dy>>>1)):dx;
  always @(*) begin
   sword_on=0;sword_rgb=0;
   if(across>=-2 && across<=2 && dy>=-27 && dy<=-4) begin

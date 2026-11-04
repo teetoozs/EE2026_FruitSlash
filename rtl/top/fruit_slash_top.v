@@ -349,6 +349,7 @@ module fruit_slash_top (
       .x(pixel_x),.y(pixel_y),.opened(quit_open),.confirmed(menu_return),
       .pixel_on(quit_pixel),.rgb(quit_rgb));
     cursor_settings settings_cursor(
+      .cut_event((gameplay_enabled && |raw_hit_mask) || bonus_award || (bonus_accepting && bonus_contact)),
       .menu_locked(mode_menu_busy),.menu_busy(settings_menu_busy),
       .clk(clk),.reset(reset),.back(pressed[2]),.tick(game_tick),.blade_event(blade_event),.state(state),
       .x(pixel_x),.y(pixel_y),.cx(cursor_x),.cy(cursor_y),
