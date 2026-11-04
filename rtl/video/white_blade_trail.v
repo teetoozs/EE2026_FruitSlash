@@ -1,5 +1,5 @@
 // Compact blade trail for the Basys3.
-// Sixteen consecutive Bresenham pixels form a compact silver blade. Keeping
+// Sixteen samples spaced two Bresenham steps apart form a visible silver trail. Keeping
 // every step connects even diagonal strokes and one-pixel tips without adding
 // more parallel sample renderers. Radius controls the body's tapered width.
 module white_blade_trail (
@@ -25,6 +25,7 @@ module white_blade_trail (
     reg [3:0] head = 0;
     wire [3:0] newest = head - 4'd1;
     reg [4:0] valid_count = 0;
+    reg spacing=0;
     reg walking = 0;
     reg [9:0] walk_x = 0, walk_y = 0, end_x = 0, end_y = 0;
     reg signed [11:0] dx = 0, dy = 0, error = 0;
@@ -57,7 +58,7 @@ module white_blade_trail (
         if (reset || !enabled) begin
             head <= 0;
             valid_count <= 0;
-            walking <= 0;
+            walking <= 0;spacing<=0;
             for (i = 0; i < POINTS; i = i + 1) begin
                 points_x[i] <= 0;
                 points_y[i] <= 0;
@@ -68,6 +69,7 @@ module white_blade_trail (
                 for (i = 0; i < POINTS; i = i + 1)
                     if (life[i] != 0) life[i] <= life[i] - 1'b1;
             if (blade_event && slash_active && (cursor_x != previous_x || cursor_y != previous_y)) begin
+                spacing<=0;
                 walk_x <= previous_x;
                 walk_y <= previous_y;
                 end_x <= cursor_x;
@@ -81,10 +83,11 @@ module white_blade_trail (
             end else if (walking) begin
                 // Adjacent motion events share an endpoint. Do not store it
                 // twice: duplicate samples would shorten the visible stroke.
-                if (valid_count == 0 ||
+                spacing<=~spacing;
+                if ((!spacing || (walk_x==end_x && walk_y==end_y)) && (valid_count == 0 ||
                     walk_x != points_x[newest] ||
                     walk_y != points_y[newest] ||
-                    life[newest] == 0) begin
+                    life[newest] == 0)) begin
                     points_x[head] <= walk_x;
                     points_y[head] <= walk_y;
                     life[head] <= 10;

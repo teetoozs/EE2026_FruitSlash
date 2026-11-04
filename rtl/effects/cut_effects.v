@@ -2,6 +2,7 @@
 // Positions/velocities use signed Q12.4, like object_physics.
 module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     input clk,
+    input [9:0] blade_x0,blade_y0,blade_x1,blade_y1,
     input reset,
     input game_tick,
     input playing,
@@ -9,6 +10,7 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     input [N-1:0] bomb,
     input [N*5-1:0] radii,
     output reg [N*5-1:0] effect_radii = 0,
+    output reg [N*2-1:0] cut_direction=0,
     input [N*16-1:0] positions_x,
     input [N*16-1:0] positions_y,
     output reg [2*N-1:0] halves_active = 0,
@@ -22,6 +24,14 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     reg signed [15:0] px [0:2*N-1];
     reg signed [15:0] py [0:2*N-1];
     reg signed [15:0] vy [0:2*N-1];
+    reg signed [15:0] vx [0:2*N-1];
+    wire signed [10:0] swipe_dx=$signed({1'b0,blade_x1})-$signed({1'b0,blade_x0});
+    wire signed [10:0] swipe_dy=$signed({1'b0,blade_y1})-$signed({1'b0,blade_y0});
+    wire [10:0] abs_dx=swipe_dx<0 ? -swipe_dx:swipe_dx;
+    wire [10:0] abs_dy=swipe_dy<0 ? -swipe_dy:swipe_dy;
+    // 0 vertical, 1 horizontal, 2 falling diagonal, 3 rising diagonal.
+    wire [1:0] direction=abs_dx>({1'b0,abs_dy}<<1) ? 1:
+        abs_dy>({1'b0,abs_dx}<<1) ? 0:(swipe_dx[10]^swipe_dy[10]) ? 3:2;
     reg [6:0] life [0:2*N-1];
     reg [4:0] age [0:N-1];
     integer i;
@@ -38,7 +48,7 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     always @(posedge clk) begin
         if (reset) begin
             splash_active <= 0;
-            effect_radii <= 0;
+            effect_radii <= 0;cut_direction<=0;
             splash_x <= 0;
             splash_y <= 0;
             for (i = 0; i < N; i = i + 1) age[i] <= 0;
@@ -46,7 +56,7 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
             for (i = 0; i < 2*N; i = i + 1) begin
                 px[i] <= 0;
                 py[i] <= 0;
-                vy[i] <= 0;
+                vy[i] <= 0;vx[i]<=0;
                 life[i] <= 0;
             end
         end else if (playing) begin
@@ -60,7 +70,7 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
                 for (i = 0; i < 2*N; i = i + 1) begin
                     if (halves_active[i]) begin
                         // Even pieces are left semicircles, odd pieces right semicircles.
-                        px[i] <= px[i] + ((i % 2 == 0) ? -16'sd32 : 16'sd32);
+                        px[i] <= px[i] + vx[i];
                         py[i] <= py[i] + vy[i];
                         vy[i] <= vy[i] + 16'sd4;
                         life[i] <= life[i] - 1'b1;
@@ -85,8 +95,13 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
                         px[2*i+1] <= positions_x[i*16+:16];
                         py[2*i] <= positions_y[i*16+:16];
                         py[2*i+1] <= positions_y[i*16+:16];
-                        vy[2*i] <= 16'sd16;
-                        vy[2*i+1] <= 16'sd24;
+                        cut_direction[i*2+:2]<=direction;
+                        case(direction)
+                          0:begin vx[2*i]<=-32;vx[2*i+1]<=32;vy[2*i]<=16;vy[2*i+1]<=16;end
+                          1:begin vx[2*i]<=0;vx[2*i+1]<=0;vy[2*i]<=-32;vy[2*i+1]<=32;end
+                          2:begin vx[2*i]<=24;vx[2*i+1]<=-24;vy[2*i]<=-24;vy[2*i+1]<=24;end
+                          3:begin vx[2*i]<=-24;vx[2*i+1]<=24;vy[2*i]<=-24;vy[2*i+1]<=24;end
+                        endcase
                         life[2*i] <= 90;
                         life[2*i+1] <= 90;
                     end

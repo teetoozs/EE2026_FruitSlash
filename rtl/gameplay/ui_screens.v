@@ -75,6 +75,15 @@ module glyph35 (
             "7": g = {5'b11111, 5'b00001, 5'b00010, 5'b00100, 5'b01000, 5'b01000, 5'b01000};
             "8": g = {5'b01110, 5'b10001, 5'b10001, 5'b01110, 5'b10001, 5'b10001, 5'b01110};
             "9": g = {5'b01110, 5'b10001, 5'b10001, 5'b01111, 5'b00001, 5'b00010, 5'b01100};
+            "G": g={5'b01110,5'b10001,5'b10000,5'b10111,5'b10001,5'b10001,5'b01110};
+            "J": g={5'b00111,5'b00010,5'b00010,5'b00010,5'b10010,5'b10010,5'b01100};
+            "K": g={5'b10001,5'b10010,5'b10100,5'b11000,5'b10100,5'b10010,5'b10001};
+            "Q": g={5'b01110,5'b10001,5'b10001,5'b10001,5'b10101,5'b10010,5'b01101};
+            "Z": g={5'b11111,5'b00001,5'b00010,5'b00100,5'b01000,5'b10000,5'b11111};
+            ".": g={5'b00000,5'b00000,5'b00000,5'b00000,5'b00000,5'b00110,5'b00110};
+            ":": g={5'b00000,5'b00110,5'b00110,5'b00000,5'b00110,5'b00110,5'b00000};
+            "-": g={5'b00000,5'b00000,5'b00000,5'b11111,5'b00000,5'b00000,5'b00000};
+            "?": g={5'b01110,5'b10001,5'b00001,5'b00010,5'b00100,5'b00000,5'b00100};
             default: g = 35'd0;
         endcase
     end
@@ -190,10 +199,13 @@ module ui_screens (
     input      [ 9:0] cursor_y,
     input             slash_active,
     input             btn_start,
+    input blade_event,tick,reset,menu_locked,
+    output menu_busy,
+    input [9:0] previous_x,previous_y,
     output reg        ui_on  = 0,
     output reg [11:0] ui_rgb = 0,
     output reg        mode   = 0,
-    output            start_req
+    output reg        start_req=0
 );
     // ---------------- digits as ASCII, leading zeros blanked
     wire [19:0] sc_bcd, bs_bcd;
@@ -368,7 +380,7 @@ module ui_screens (
             text_dx=((x-10'd152)>>1) & 10'd7;
             text_dy=(y-10'd182)>>1;
             text_index=(x-10'd152)>>4;
-            text_chars="SLASH A BOARD TO PLAY";
+            text_chars=" SLASH FRUIT TO ENTER";
             text_char=text_chars[(21-1-((x-10'd152)>>4))*8+:8];
         end
         if(state==2'd0 && x>=10'd240 && x<10'd400 &&
@@ -380,41 +392,41 @@ module ui_screens (
             text_chars={"BEST ", num5(bs_bcd)};
             text_char=text_chars[(10-1-((x-10'd240)>>4))*8+:8];
         end
-        if(state==2'd0 && x>=10'd111 && x<10'd239 &&
-           y>=10'd320 && y<10'd356) begin
+        if(state==2'd0 && x>=10'd64 && x<10'd192 &&
+           y>=10'd332 && y<10'd368) begin
             text_region=5'd5;
-            text_dx=((x-10'd111)>>2) & 10'd7;
-            text_dy=(y-10'd320)>>2;
-            text_index=(x-10'd111)>>5;
+            text_dx=((x-10'd64)>>2) & 10'd7;
+            text_dy=(y-10'd332)>>2;
+            text_index=(x-10'd64)>>5;
             text_chars="SOLO";
-            text_char=text_chars[(4-1-((x-10'd111)>>5))*8+:8];
+            text_char=text_chars[(4-1-((x-10'd64)>>5))*8+:8];
         end
-        if(state==2'd0 && x>=10'd111 && x<10'd239 &&
-           y>=10'd360 && y<10'd378) begin
+        if(state==2'd0 && x>=10'd64 && x<10'd192 &&
+           y>=10'd376 && y<10'd394) begin
             text_region=5'd6;
-            text_dx=((x-10'd111)>>1) & 10'd7;
-            text_dy=(y-10'd360)>>1;
-            text_index=(x-10'd111)>>4;
+            text_dx=((x-10'd64)>>1) & 10'd7;
+            text_dy=(y-10'd376)>>1;
+            text_index=(x-10'd64)>>4;
             text_chars="1 PLAYER";
-            text_char=text_chars[(8-1-((x-10'd111)>>4))*8+:8];
+            text_char=text_chars[(8-1-((x-10'd64)>>4))*8+:8];
         end
-        if(state==2'd0 && x>=10'd369 && x<10'd561 &&
-           y>=10'd320 && y<10'd356) begin
+        if(state==2'd0 && x>=10'd224 && x<10'd416 &&
+           y>=10'd332 && y<10'd368) begin
             text_region=5'd7;
-            text_dx=((x-10'd369)>>2) & 10'd7;
-            text_dy=(y-10'd320)>>2;
-            text_index=(x-10'd369)>>5;
+            text_dx=((x-10'd224)>>2) & 10'd7;
+            text_dy=(y-10'd332)>>2;
+            text_index=(x-10'd224)>>5;
             text_chars="VERSUS";
-            text_char=text_chars[(6-1-((x-10'd369)>>5))*8+:8];
+            text_char=text_chars[(6-1-((x-10'd224)>>5))*8+:8];
         end
-        if(state==2'd0 && x>=10'd425 && x<10'd505 &&
-           y>=10'd360 && y<10'd378) begin
+        if(state==2'd0 && x>=10'd280 && x<10'd360 &&
+           y>=10'd376 && y<10'd394) begin
             text_region=5'd8;
-            text_dx=((x-10'd425)>>1) & 10'd7;
-            text_dy=(y-10'd360)>>1;
-            text_index=(x-10'd425)>>4;
+            text_dx=((x-10'd280)>>1) & 10'd7;
+            text_dy=(y-10'd376)>>1;
+            text_index=(x-10'd280)>>4;
             text_chars="1 V 1";
-            text_char=text_chars[(5-1-((x-10'd425)>>4))*8+:8];
+            text_char=text_chars[(5-1-((x-10'd280)>>4))*8+:8];
         end
         if(state==2'd0 && x>=10'd144 && x<10'd496 &&
            y>=10'd410 && y<10'd428) begin
@@ -422,7 +434,7 @@ module ui_screens (
             text_dx=((x-10'd144)>>1) & 10'd7;
             text_dy=(y-10'd410)>>1;
             text_index=(x-10'd144)>>4;
-            text_chars="OR PRESS BTNC FOR SOLO";
+            text_chars="HOLD CLICK AND SWIPE  ";
             text_char=text_chars[(22-1-((x-10'd144)>>4))*8+:8];
         end
         if(state==2'd2 && x>=10'd128 && x<10'd512 &&
@@ -502,16 +514,28 @@ module ui_screens (
  
     // ---------------- Mode boards (title): slice one to choose and start at once
     localparam LX0 = 60,  LX1 = 290, RX0 = 350, RX1 = 580, BY0 = 215, BY1 = 395;
-    wire hov_l = (cursor_x >= LX0) && (cursor_x < LX1) && (cursor_y >= BY0) && (cursor_y < BY1);
-    wire hov_r = (cursor_x >= RX0) && (cursor_x < RX1) && (cursor_y >= BY0) && (cursor_y < BY1);
-    assign start_req = (state == 2'd0) && slash_active && (hov_l || hov_r);
+    wire hov_l,hov_r;
+    wire unused_l,unused_r;
+    menu_fruit_target #(.CX(128),.CY(280),.R(30)) left_target(
+      .clk(clk),.trigger(blade_event),.x(x),.y(y),.x0(previous_x),.y0(previous_y),.x1(cursor_x),.y1(cursor_y),.pixel(unused_l),.hit(hov_l));
+    menu_fruit_target #(.CX(320),.CY(280),.R(30)) right_target(
+      .clk(clk),.trigger(blade_event),.x(x),.y(y),.x0(previous_x),.y0(previous_y),.x1(cursor_x),.y1(cursor_y),.pixel(unused_r),.hit(hov_r));
+    reg was_slashing=0;
+    wire mode_cut=state==0 && !menu_locked && !menu_busy && blade_event==0 &&
+      slash_active && was_slashing && (previous_x!=cursor_x || previous_y!=cursor_y) && (hov_l || hov_r);
+    wire menu_done,menu_fx;wire [11:0] menu_fx_rgb;
+    menu_cut_animation mode_animation(.clk(clk),.reset(reset || state!=0),.tick(tick),
+      .trigger(mode_cut),.cx(mode ? 10'd320:10'd128),.cy(10'd280),
+      .colour(mode ? 12'h5B3:12'hF80),.x(x),.y(y),.busy(menu_busy),.done(menu_done),.pixel(menu_fx),.rgb(menu_fx_rgb));
     always @(posedge clk) begin
-        if (state == 2'd0) begin
-            if (slash_active && hov_r) mode <= 1'b1;
-            else if ((slash_active && hov_l) || btn_start) mode <= 1'b0;
-        end
+      was_slashing<=slash_active;start_req<=0;
+      if(reset) mode<=0;
+      else begin
+       if(mode_cut) mode<=hov_r;
+       if(menu_done && state==0) start_req<=1;
+      end
     end
- 
+
     // Wood pattern (horizontal planks with seams and grain, matching the background).
     wire [11:0] wood = (y[3:0] == 4'd15) ? 12'h321 :
                        ((((x ^ {y[3:0], 1'b0}) & 10'd15) == 0) && y[2]) ? 12'h532 :
@@ -528,8 +552,8 @@ module ui_screens (
     // Fruit icons (simple shaded circles): orange on the left board, melon on the right.
     wire signed [10:0] sx = {1'b0, x};
     wire signed [10:0] sy = {1'b0, y};
-    wire signed [10:0] lx = sx - 11'sd175, ly = sy - 11'sd280;
-    wire signed [10:0] rx = sx - 11'sd465, ry = sy - 11'sd280;
+    wire signed [10:0] lx = sx - 11'sd128, ly = sy - 11'sd280;
+    wire signed [10:0] rx = sx - 11'sd320, ry = sy - 11'sd280;
     wire signed [21:0] l2 = lx * lx + ly * ly;
     wire signed [21:0] r2 = rx * rx + ry * ry;
     wire signed [10:0] hlx = lx + 11'sd11, hly = ly + 11'sd11;
@@ -571,7 +595,7 @@ module ui_screens (
         end
         case (state)
             2'd0: begin
-                if (in_l) begin
+                if ((orange || leaf) && !(menu_busy && !mode)) begin
                     next_on = 1; next_rgb = wood;
                     if (gold_l) next_rgb = 12'hFC0;
                     if (bord_l) next_rgb = hov_l ? 12'hF33 : 12'h811;
@@ -581,11 +605,11 @@ module ui_screens (
                     end
                     if (leaf) next_rgb = 12'h3B2;
                 end
-                if (in_r) begin
+                if (melon && !(menu_busy && mode)) begin
                     next_on = 1; next_rgb = wood;
                     if (gold_r) next_rgb = 12'hFC0;
                     if (bord_r) next_rgb = hov_r ? 12'hF33 : 12'h811;
-                    if (melon) begin
+                    if (melon && !(menu_busy && mode)) begin
                         next_rgb = x[3] ? 12'h175 : 12'h4C3;
                         if (r2 > 650) next_rgb = 12'h052;
                         if (hr2 <= 40) next_rgb = 12'h9F9;
@@ -636,8 +660,9 @@ module ui_screens (
             end
             default: ;
         endcase
-        if (cur_edge) begin next_on = 1; next_rgb = OUTLINE; end
-        if (cur_fill) begin next_on = 1; next_rgb = 12'hFE8; end
+
+
+        if(menu_fx && state==0) begin next_on=1;next_rgb=menu_fx_rgb;end
     end
  
     // One register stage: a pixel lasts four 100 MHz clocks, so this is invisible.
@@ -645,4 +670,166 @@ module ui_screens (
         ui_on  <= next_on;
         ui_rgb <= next_rgb;
     end
+endmodule
+// Settings and a procedural katana cursor share the existing source file.
+module cursor_settings(
+ input clk,reset,back,tick,blade_event,menu_locked,input [1:0] state,
+ output menu_busy,
+ input [9:0] x,y,cx,cy,px,py,input held,
+ output reg [1:0] sensitivity=0,output reg opened=0,
+ output panel_on,output reg [11:0] panel_rgb,
+ output reg sword_on,output reg [11:0] sword_rgb
+);
+ wire settings_done,settings_fx;wire [11:0] settings_fx_rgb;
+ reg last_held=0;
+ reg [2:0] swing=0;
+ wire click=held && !last_held;
+ wire button_hover,settings_fruit;
+ menu_fruit_target #(.CX(512),.CY(280),.R(30)) settings_target(
+   .clk(clk),.trigger(blade_event),.x(x),.y(y),.x0(px),.y0(py),.x1(cx),.y1(cy),.pixel(settings_fruit),.hit(button_hover));
+ wire settings_cut=!opened && !menu_locked && !menu_busy && held && last_held && (cx!=px || cy!=py) && button_hover;
+ wire gain_hover=cx>=176 && cx<464 && cy>=220 && cy<264;
+ wire back_hover=cx>=240 && cx<400 && cy>=320 && cy<352;
+ always @(posedge clk) begin
+  last_held<=held;
+  if(reset) begin opened<=0;sensitivity<=0;swing<=0;end
+  else begin
+   if(back || state!=0) opened<=0;
+   else if(settings_done) opened<=1;
+   else if(click) begin
+    if(opened && back_hover) opened<=0;
+    else if(opened && gain_hover) sensitivity<=sensitivity+1'b1;
+   end
+   if(!held) swing<=0;
+   else if(tick && (cx!=px || cy!=py)) swing<=swing+1'b1;
+  end
+ end
+
+ menu_cut_animation settings_animation(.clk(clk),.reset(reset||back||state!=0),.tick(tick),
+ .trigger(settings_cut),.cx(10'd512),.cy(10'd280),.colour(12'hD35),.x(x),.y(y),
+ .busy(menu_busy),.done(settings_done),.pixel(settings_fx),.rgb(settings_fx_rgb));
+ wire title_text,gain_text,back_text,settings_text;
+ wire [127:0] gain_label=sensitivity==0 ? "SENSITIVITY 1X   ":
+   sensitivity==1 ? "SENSITIVITY 0.5X ":sensitivity==2 ? "SENSITIVITY 2X   ":"SENSITIVITY 4X   ";
+ text_line #(.LEN(8),.K(1),.X0(256),.Y0(144)) settings_title(.x(x),.y(y),.chars("SETTINGS"),.on(title_text));
+ text_line #(.LEN(16),.K(1),.X0(192),.Y0(232)) gain_label_text(.x(x),.y(y),.chars(gain_label),.on(gain_text));
+ text_line #(.LEN(4),.K(1),.X0(288),.Y0(328)) back_label(.x(x),.y(y),.chars("BACK"),.on(back_text));
+ text_line #(.LEN(8),.K(1),.X0(448),.Y0(340)) settings_label(.x(x),.y(y),.chars("SETTINGS"),.on(settings_text));
+ wire settings_box=x>=240 && x<400 && y>=430 && y<454;
+ assign panel_on=state==0 && (opened || (settings_fruit && !menu_busy) || settings_text || settings_fx);
+ always @(*) begin
+  panel_rgb=12'h321;
+  if(opened) begin
+   if(x>=176 && x<464 && y>=220 && y<264) panel_rgb=gain_hover ? 12'h963:12'h642;
+   if(x>=240 && x<400 && y>=320 && y<352) panel_rgb=back_hover ? 12'h963:12'h642;
+   if(title_text || gain_text || back_text) panel_rgb=12'hFEA;
+  end else begin
+   panel_rgb=x<512 && y<280 ? 12'hF8A:12'hC24;
+   if(settings_fruit && x[2:0]==3 && y[2:0]==3) panel_rgb=12'hFE8;
+   if(settings_text) panel_rgb=12'hFEA;
+   if(settings_fx) panel_rgb=settings_fx_rgb;
+  end
+ end
+ wire signed [11:0] dx=$signed({2'b0,x})-$signed({2'b0,cx});
+ wire signed [11:0] dy=$signed({2'b0,y})-$signed({2'b0,cy});
+ // Tilt the drawn blade during movement, with the grip anchored to the cursor.
+ wire signed [11:0] across=held ? dx+(swing[2] ? -(dy>>>1):(dy>>>1)):dx;
+ always @(*) begin
+  sword_on=0;sword_rgb=0;
+  if(across>=-2 && across<=2 && dy>=-27 && dy<=-4) begin
+   sword_on=1;sword_rgb=held ? (across==2 ? 12'hFFF:12'hBCD):12'h421;
+  end
+  if(across>=-5 && across<=5 && dy>=-3 && dy<=-1) begin sword_on=1;sword_rgb=12'hDA4;end
+  if(across>=-2 && across<=2 && dy>=0 && dy<=9) begin sword_on=1;sword_rgb=dy[1] ? 12'hA43:12'h321;end
+ end
+endmodule
+
+// Convex octagonal fruit mask with sampled swipe intersection.
+module menu_fruit_target #(parameter CX=0,CY=0,R=30)(
+ input clk,trigger,input [9:0] x,y,x0,y0,x1,y1,output pixel,output reg hit=0);
+ wire signed [11:0] dx=$signed({2'b0,x})-CX,dy=$signed({2'b0,y})-CY;
+ wire [11:0] ax=dx<0 ? -dx:dx,ay=dy<0 ? -dy:dy;
+ assign pixel=ax<=R && ay<=R && ax+ay<=R+(R>>1);
+ reg busy=0;reg [4:0] step=0;
+ reg signed [15:0] walk_x=0,walk_y=0;
+ reg signed [10:0] delta_x=0,delta_y=0;
+ wire signed [11:0] tx=(walk_x>>>4)-CX,ty=(walk_y>>>4)-CY;
+ wire [11:0] adx=tx<0 ? -tx:tx,ady=ty<0 ? -ty:ty;
+ always @(posedge clk) begin
+ hit<=0;
+ if(trigger) begin
+  walk_x<=$signed({2'b0,x0,4'b0});walk_y<=$signed({2'b0,y0,4'b0});
+  delta_x<=$signed({1'b0,x1})-$signed({1'b0,x0});
+  delta_y<=$signed({1'b0,y1})-$signed({1'b0,y0});
+  step<=0;busy<=1;
+ end else if(busy) begin
+  if(adx<=R && ady<=R && adx+ady<=R+(R>>1)) begin hit<=1;busy<=0;end
+  else if(step==16) busy<=0;
+  else begin walk_x<=walk_x+delta_x;walk_y<=walk_y+delta_y;step<=step+1'b1;end
+ end
+ end
+endmodule
+
+// BTND asks first; a fresh click or BTNC confirms. BTND again cancels.
+module quit_confirmation(
+ input clk,reset,request,confirm_button,input [1:0] state,
+ input held,input [9:0] cx,cy,x,y,
+ output reg opened=0,output reg confirmed=0,
+ output pixel_on,output reg [11:0] rgb);
+ reg previous_held=0;
+ wire click=held && !previous_held;
+ wire menu_hover=cx>=208 && cx<432 && cy>=360 && cy<400;
+ wire menu_box=state==2 && !opened && x>=208 && x<432 && y>=360 && y<400;
+ wire menu_text;
+ text_line #(.LEN(9),.K(1),.X0(248),.Y0(372)) menu_label(.x(x),.y(y),.chars("MAIN MENU"),.on(menu_text));
+ wire yes_hover=cx>=128 && cx<304 && cy>=256 && cy<304;
+ wire no_hover=cx>=336 && cx<512 && cy>=256 && cy<304;
+ always @(posedge clk) begin
+  previous_held<=held;confirmed<=0;
+  if(reset || state==0) opened<=0;
+  else if(opened) begin
+   if(request || (click && no_hover)) opened<=0;
+   else if(confirm_button || (click && yes_hover)) begin opened<=0;confirmed<=1;end
+  end else if(request || (state==2 && click && menu_hover)) opened<=1;
+ end
+ wire question,yes_text,no_text;
+ text_line #(.LEN(13),.K(1),.X0(216),.Y0(192)) q(.x(x),.y(y),.chars("QUIT TO MENU?"),.on(question));
+ text_line #(.LEN(4),.K(1),.X0(184),.Y0(272)) a(.x(x),.y(y),.chars("QUIT"),.on(yes_text));
+ text_line #(.LEN(6),.K(1),.X0(376),.Y0(272)) b(.x(x),.y(y),.chars("CANCEL"),.on(no_text));
+ assign pixel_on=menu_box || (opened && x>=96 && x<544 && y>=160 && y<336);
+ always @(*) begin
+  rgb=12'h321;
+  if(x>=128 && x<304 && y>=256 && y<304) rgb=yes_hover ? 12'hD43:12'h822;
+  if(x>=336 && x<512 && y>=256 && y<304) rgb=no_hover ? 12'h5A5:12'h353;
+  if(question || yes_text || no_text) rgb=12'hFFE;
+  if(menu_box) begin
+   rgb=menu_hover ? 12'h963:12'h642;
+   if(menu_text) rgb=12'hFFE;
+  end
+ end
+endmodule
+
+// About one second at the existing ~60 Hz frame tick. Small arithmetic masks only.
+module menu_cut_animation(input clk,reset,tick,trigger,input [9:0] cx,cy,x,y,
+ input [11:0] colour,output reg busy=0,output reg done=0,output pixel,output [11:0] rgb);
+ reg [5:0] age=0;
+ always @(posedge clk) begin
+ done<=0;
+ if(reset) begin busy<=0;age<=0;end
+ else if(trigger && !busy) begin busy<=1;age<=0;end
+ else if(busy && tick) begin
+ if(age==59) begin busy<=0;done<=1;end else age<=age+1'b1;
+ end
+ end
+ wire signed [11:0] dx=$signed({2'b0,x})-$signed({2'b0,cx});
+ wire signed [11:0] dy=$signed({2'b0,y})-$signed({2'b0,cy});
+ wire [11:0] ax=dx<0 ? -dx:dx,ay=dy<0 ? -dy:dy;
+ wire [11:0] spread=12'd15+{7'd0,age[5:1]};
+ wire splat=ax+ay<spread || (ax<4 && ay<spread+16) || (ay<3 && ax<spread+18);
+ wire signed [11:0] piece_x=dx<0 ? dx+$signed({6'd0,age}) : dx-$signed({6'd0,age});
+ wire signed [11:0] piece_y=dy-$signed({6'd0,age});
+ wire [11:0] apx=piece_x<0 ? -piece_x:piece_x,apy=piece_y<0 ? -piece_y:piece_y;
+ wire pieces=apx<30 && apy<30 && apx+apy<43 && (dx<0 ? piece_x<0:piece_x>=0);
+ assign pixel=busy && (splat || pieces);
+ assign rgb=pieces ? (apx<2 ? 12'hFFE:colour):{1'b0,colour[11:9],1'b0,colour[7:5],1'b0,colour[3:1]};
 endmodule

@@ -1,17 +1,28 @@
 module bonus_fruit_view(
  input clk,reset,active,cut,falling,
+ input tri0 burst, input tick,
  input signed [15:0] position_x,position_y,
  input [5:0] radius, input [6:0] fall_age,
  input [9:0] x0,y0,x1,y1,x,y,
  output pixel_on, output reg [11:0] rgb
 );
- reg [9:0] ax[0:7],ay[0:7],bx[0:7],by[0:7];
- reg [7:0] valid=0;reg [2:0] next_cut=0;
+ reg [9:0] ax[0:9],ay[0:9];
+ reg [1:0] direction[0:9];
+ wire signed [10:0] cut_dx=$signed({1'b0,x1})-$signed({1'b0,x0});
+ wire signed [10:0] cut_dy=$signed({1'b0,y1})-$signed({1'b0,y0});
+ wire [10:0] cut_ax=cut_dx<0 ? -cut_dx:cut_dx,cut_ay=cut_dy<0 ? -cut_dy:cut_dy;
+ reg [9:0] valid=0;reg [3:0] next_cut=0;
+ reg [2:0] flash=0;
+ always @(posedge clk) begin
+ if(reset || !active) flash<=0;
+ else if(cut) flash<=4;
+ else if(tick && flash!=0) flash<=flash-1'b1;
+ end
  integer i;
  always @(posedge clk) begin
   if(reset || !active) begin valid<=0;next_cut<=0;end
-  else if(cut) begin
-   ax[next_cut]<=x0;ay[next_cut]<=y0;bx[next_cut]<=x1;by[next_cut]<=y1;
+  else if(cut && next_cut<10 && (x0!=x1 || y0!=y1)) begin
+   ax[next_cut]<=x0;ay[next_cut]<=y0;direction[next_cut]<=cut_ax>({1'b0,cut_ay}<<1) ? 0:cut_ay>({1'b0,cut_ax}<<1) ? 1:(cut_dx[10]^cut_dy[10]) ? 2:3;
    valid[next_cut]<=1;next_cut<=next_cut+1'b1;
   end
  end
@@ -26,28 +37,35 @@ module bonus_fruit_view(
  wire [13:0] distance_squared=absx[6:0]*absx[6:0]+absy[6:0]*absy[6:0];
  wire [11:0] radius_squared=radius*radius;
  wire correct_half=!falling || (screen_dx<0 ? dx<0 : dx>=0);
- assign pixel_on=active && correct_half && absx<=radius && absy<=radius &&
+ wire fruit_pixel=active && correct_half && absx<=radius && absy<=radius &&
                  distance_squared<=radius_squared;
- wire [7:0] scar;
+ wire [12:0] burst_x=screen_dx<0 ? -screen_dx:screen_dx;
+ wire [12:0] burst_y=dy<0 ? -dy:dy;
+ wire [12:0] travel=13'd8+{4'd0,fall_age,2'b0};
+ wire [12:0] bx_delta=burst_x>travel ? burst_x-travel:travel-burst_x;
+ wire [12:0] by_delta=burst_y>travel ? burst_y-travel:travel-burst_y;
+ wire particles=(bx_delta<5 && burst_y<5)||(by_delta<5 && burst_x<5)||(bx_delta<4 && by_delta<4);
+ assign pixel_on=active && (burst ? (fall_age<3 ? burst_x+burst_y<70:particles):fruit_pixel);
+ wire [9:0] scar;
  genvar k;
- generate for(k=0;k<8;k=k+1) begin:marks
-  wire signed [10:0] vx=$signed({1'b0,bx[k]})-$signed({1'b0,ax[k]});
-  wire signed [10:0] vy=$signed({1'b0,by[k]})-$signed({1'b0,ay[k]});
+ generate for(k=0;k<10;k=k+1) begin:marks
   wire signed [10:0] px=$signed({1'b0,x})-$signed({1'b0,ax[k]});
   wire signed [10:0] py=$signed({1'b0,y})-$signed({1'b0,ay[k]});
-  wire signed [22:0] cross_product=px*vy-py*vx;
-  wire [22:0] distance=cross_product<0 ? -cross_product:cross_product;
-  wire [10:0] avx=vx<0 ? -vx:vx,avy=vy<0 ? -vy:vy;
-  wire [12:0] thickness=({2'b0,avx}+{2'b0,avy})<<1;
-  wire box_x=x>=(ax[k]<bx[k]?ax[k]:bx[k]) && x<=(ax[k]>bx[k]?ax[k]:bx[k]);
-  wire box_y=y>=(ay[k]<by[k]?ay[k]:by[k]) && y<=(ay[k]>by[k]?ay[k]:by[k]);
-  assign scar[k]=valid[k] && (avx!=0 || avy!=0) && box_x && box_y && distance<=thickness;
+  // Quantize the swipe to horizontal, vertical or either diagonal.
+  // This avoids twenty per-pixel multipliers for ten persistent marks.
+  wire signed [11:0] line_error=direction[k]==0 ? py:direction[k]==1 ? px:
+    direction[k]==2 ? $signed({px[10],px})+$signed({py[10],py}):$signed({px[10],px})-$signed({py[10],py});
+  wire [11:0] distance=line_error<0 ? -line_error:line_error;
+  assign scar[k]=valid[k] && distance<=3;
+
  end endgenerate
  always @(*) begin
   rgb=dy>($signed({1'b0,radius})>>>2) ? 12'hD60:12'hF92;
   if(dx< -12 && dy< -12) rgb=12'hFC7;
   if(distance_squared+{6'd0,radius,2'b0}>=radius_squared) rgb=12'hA40;
   if(falling && absx<=2) rgb=12'hFFE;
-  if(!falling && |scar) rgb=12'hFFE;
+  if(!falling && |scar) rgb=flash!=0 ? 12'hFFF:12'hFFE;
+  if(flash!=0 && distance_squared+{5'd0,radius,3'b0}>=radius_squared) rgb=12'hFF8;
+  if(burst) rgb=fall_age<3 ? 12'hFFF:12'hFC4;
  end
 endmodule

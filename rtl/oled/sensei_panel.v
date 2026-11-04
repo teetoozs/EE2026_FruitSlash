@@ -2,6 +2,7 @@
 // Text/end statistics remain to be implemented.
 module sensei_panel (
     input         clk,
+    input versus,aim_selected,input [2:0] aim_origin,aim_target,aim_speed,input [6:0] cooldown,
     input         reset,
     input  [11:0] heart_levels,
     input  [ 1:0] lives,
@@ -25,17 +26,17 @@ module sensei_panel (
     end
     // Snapshot multi-bit status into a mailbox held stable while the
     // OLED domain receives a synchronized request. No torn status buses.
-    reg [44:0] mailbox = 0;
+    reg [62:0] mailbox = 0;
     reg request = 0;
     (* ASYNC_REG="TRUE" *) reg ack_meta = 0, ack_sync = 0;
     (* ASYNC_REG="TRUE" *) reg req_meta = 0, req_sync = 0;
     reg acknowledge = 0;
-    reg [44:0] status = 0;
+    reg [62:0] status = 0;
     always @(posedge clk) begin
         ack_meta <= acknowledge;
         ack_sync <= ack_meta;
         if (request == ack_sync) begin
-            mailbox <= {multiplier, best_score, heart_levels, lives, difficulty, state, combo};
+            mailbox <= {versus,aim_selected,aim_origin,aim_target,aim_speed,cooldown,multiplier, best_score, heart_levels, lives, difficulty, state, combo};
             request <= ~request;
         end
     end
@@ -88,7 +89,7 @@ module sensei_panel (
                                dgt(1'b0, combo_bcd[3:0])};
     wire t_best, t_level, t_combo, t_mult;
     text_line #(10, 0, 8, 3)  l_best  (.x({3'b0, x}), .y({4'b0, y}), .chars({"BEST ", best_chars}), .on(t_best));
-    text_line #(7, 0, 8, 33)  l_level (.x({3'b0, x}), .y({4'b0, y}), .chars({"LEVEL ", 8'h31 + {6'd0, shown_difficulty}}), .on(t_level));
+    text_line #(7, 0, 8, 33)  l_level (.x({3'b0, x}), .y({4'b0, y}), .chars("ENDLESS"), .on(t_level));
     text_line #(9, 0, 8, 43)  l_combo (.x({3'b0, x}), .y({4'b0, y}), .chars({"COMBO ", combo_chars}), .on(t_combo));
     text_line #(7, 0, 8, 53)  l_mult  (.x({3'b0, x}), .y({4'b0, y}), .chars({"MULT X", 8'h30 + {5'd0, shown_mult}}), .on(t_mult));
  
@@ -113,6 +114,40 @@ module sensei_panel (
         if (t_combo) colour = 16'hFFFF;
         if (t_mult)  colour = 16'hFC00;
     end
+    wire [2:0] shown_origin=status[60:58],shown_target=status[57:55],shown_speed=status[54:52];
+    wire aim_text,speed_text,ready_text,bomb_text;
+    text_line #(10,0,4,44) aim_label(.x({3'd0,x}),.y({4'd0,y}),.chars("SW5-11 AIM"),.on(aim_text));
+    text_line #(11,0,4,54) speed_label(.x({3'd0,x}),.y({4'd0,y}),.chars({"SW1-4 SPD ",8'h30+{5'd0,shown_speed}}),.on(speed_text));
+    text_line #(7,0,4,24) ready_label(.x({3'd0,x}),.y({4'd0,y}),.chars("U:FRUIT"),.on(ready_text));
+    text_line #(6,0,4,34) bomb_label(.x({3'd0,x}),.y({4'd0,y}),.chars("R:BOMB"),.on(bomb_text));
+    reg [6:0] aim_x;
+    always @(*) case(shown_origin)
+    0:aim_x=86;1:aim_x=74;2:aim_x=62;3:aim_x=48;4:aim_x=34;5:aim_x=22;default:aim_x=10;
+    endcase
+    wire signed [4:0] angle=$signed({1'b0,shown_target})-$signed({1'b0,shown_origin});
+    reg signed [8:0] arrow_dx;
+    always @(*) begin
+    case(angle<0 ? -angle:angle)
+    0:arrow_dx=0;1:arrow_dx=2;2:arrow_dx=4;3:arrow_dx=7;4:arrow_dx=9;5:arrow_dx=12;default:arrow_dx=16;
+    endcase
+    if(angle>=0) arrow_dx=-arrow_dx;
+    end
+    wire signed [8:0] arrow_px=$signed({2'b0,x})-$signed({2'b0,aim_x});
+    wire signed [8:0] arrow_py=9'sd19-$signed({3'b0,y});
+    wire signed [17:0] arrow_error=(arrow_px<<<4)-arrow_py*arrow_dx;
+    wire arrow_line=y>=3 && y<=19 && arrow_error>=-16 && arrow_error<=16;
+    reg [15:0] display_colour;
+    always @(*) begin
+      display_colour=colour;
+      if(status[62]) begin
+        display_colour=16'h1082;
+        if(aim_text || speed_text || ready_text || bomb_text) display_colour=16'hffff;
+        if(status[61] && arrow_line) display_colour=16'hffe0;
+        if(status[61] && y>=18 && y<=20 && x>=aim_x && x<=aim_x+3) display_colour=16'h07e0;
+        if(!status[61] && y>=6 && y<=16 && x>=44 && x<=50) display_colour=16'hF800;
+        if(status[51:45]!=0 && x>=86 && y>=26 && y<40) display_colour=16'hF800;
+      end
+    end
     assign JB[2] = 0;
     Oled_Display driver (
         .clk           (oled_clk),
@@ -121,7 +156,7 @@ module sensei_panel (
         .sending_pixels(),
         .sample_pixel  (),
         .pixel_index   (index),
-        .pixel_data    (colour),
+        .pixel_data    (display_colour),
         .cs            (JB[0]),
         .sdin          (JB[1]),
         .sclk          (JB[3]),

@@ -25,6 +25,7 @@ module pixel_compositor #(
     input [N*16-1:0] explosion_y,
     input [8:0] explosion_age,
     input         [N*5-1:0] effect_radii,
+    input tri0 [N*2-1:0] cut_direction,
     input         [2*N-1:0] halves_active,
     input         [2*N*16-1:0] halves_x,
     input         [2*N*16-1:0] halves_y,
@@ -167,15 +168,28 @@ module pixel_compositor #(
     reg signed [15:0] qx, qy;
     reg signed [12:0] cx, cy, dx, dy;
     reg [12:0] abs_x, abs_y;
+    reg signed [13:0] cut_side;
+    // Vertical timber planks: seams, staggered end joints, grain and nail heads.
+    wire [5:0] wood_u=x[5:0];
+    wire [6:0] wood_v=y[6:0]+(x[6] ? 7'd64:7'd0);
+    wire [5:0] grain_phase=wood_u+{3'b0,y[6:4]}+(y[7] ? 6'd3:6'd0);
+    wire wood_grain=(grain_phase[3:0]==0)||(grain_phase[4:0]==7 && y[3]);
+    wire nail=(wood_u==6 || wood_u==57) && (wood_v==6 || wood_v==119);
     always @(*) begin
         rgb = y[5] ? 12'h642 : 12'h753;
         if (DETAILED_ART) begin
-            rgb = y[6] ? 12'h532 : 12'h643;
-            if (((x[6:0] + {3'b0, y[5:2]}) & 7'd31) == 0) rgb = 12'h432;
-            if (y[5:0] < 2) rgb = 12'h321;
+            rgb=x[6] ? 12'h743:12'h853;
+            if(wood_grain) rgb=x[6] ? 12'h632:12'h742;
+            if(wood_u<2 || wood_v<2) rgb=12'h210;
+            else if(wood_u==2 || wood_v==2) rgb=12'hA75;
+            if(nail) rgb=12'h221;
+            // Darken the outside of the arena to frame the action.
+            if(x<32 || x>=608 || y<16 || y>=464)
+                rgb={1'b0,rgb[11:9],1'b0,rgb[7:5],1'b0,rgb[3:1]};
         end
         if (wall_on) rgb = wall_rgb;
         if (splash_pixel) rgb = splash_rgb;
+        cut_side=0;
         qx           = 0;
         qy           = 0;
         cx           = 0;
@@ -229,8 +243,15 @@ module pixel_compositor #(
                                 1'b0,
                                 fruit_colour[3:1]
                             };
-                        if (dx >= -8 && dx <= -4 && dy >= -9 && dy <= -5) rgb = 12'hFDB;
+                        // Rounded highlight, plus peel speckles; no extra multipliers.
+                        if(i%4==0 && dx[2:0]==2 && dy[2:0]==3) rgb=12'hD60;
+                        if(i%4==1 && dx[2:0]==3 && dy[2:0]==2) rgb=12'hFC7;
+                        if(dx>=-9 && dx<=-3 && dy>=-10 && dy<=-4 &&
+                           (dx+dy>=-17) && (dx+dy<=-9)) rgb=12'hFDB;
                     end
+                    // Faceted spherical lighting: dark rim and lower-right hemisphere.
+                    if ((dx+dy)>$signed({1'b0,radius})/2 || abs_x+2>=extent)
+                        rgb={1'b0,rgb[11:9],1'b0,rgb[7:5],1'b0,rgb[3:1]};
                     if (abs_x == extent || abs_y == radius) rgb = 12'h321;
                 end
             end
@@ -278,18 +299,31 @@ module pixel_compositor #(
                 2: fruit_colour = 12'h5D3;
                 3: fruit_colour = 12'hB4E;
             endcase
+            case(cut_direction[(i/2)*2+:2])
+              1:cut_side=dy;
+              2:cut_side=$signed({dy[12],dy})-$signed({dx[12],dx});
+              3:cut_side=$signed({dy[12],dy})+$signed({dx[12],dx});
+              default:cut_side=dx;
+            endcase
             if (halves_active[i] && abs_y <= radius && abs_x <= extent &&
-                ((i % 2 == 0 && dx < 0) || (i % 2 == 1 && dx >= 0))) begin
+                ((i % 2 == 0 && cut_side < 0) || (i % 2 == 1 && cut_side >= 0))) begin
                 rgb = DETAILED_ART ? fruit_colour : 12'hF40;
                 if (DETAILED_ART) begin
                     if (radius == 24) rgb = dx[3] ? 12'h294 : 12'h5B3;
                     else if (dy > 4)
                         rgb = {1'b0, fruit_colour[11:9], 1'b0, fruit_colour[7:5],
                                1'b0, fruit_colour[3:1]};
-                    if (dx >= -8 && dx <= -4 && dy >= -9 && dy <= -5) rgb = 12'hFDB;
+                    // Rounded highlight, plus peel speckles; no extra multipliers.
+                        if(i%4==0 && dx[2:0]==2 && dy[2:0]==3) rgb=12'hD60;
+                        if(i%4==1 && dx[2:0]==3 && dy[2:0]==2) rgb=12'hFC7;
+                        if(dx>=-9 && dx<=-3 && dy>=-10 && dy<=-4 &&
+                           (dx+dy>=-17) && (dx+dy<=-9)) rgb=12'hFDB;
+                    // Faceted spherical lighting: dark rim and lower-right hemisphere.
+                    if ((dx+dy)>$signed({1'b0,radius})/2 || abs_x+2>=extent)
+                        rgb={1'b0,rgb[11:9],1'b0,rgb[7:5],1'b0,rgb[3:1]};
                     if (abs_x == extent || abs_y == radius) rgb = 12'h321;
                     // Exposed cut edge: red flesh for watermelon, pale flesh otherwise.
-                    if (abs_x <= 1) rgb = radius == 24 ? 12'hF76 : 12'hFDB;
+                    if (cut_side >= -1 && cut_side <= 1) rgb = radius == 24 ? 12'hF76 : 12'hFDB;
                 end
             end
         end
@@ -298,8 +332,7 @@ module pixel_compositor #(
         if (explosion_pixel) rgb = explosion_rgb;
         dx = $signed({1'b0, x}) - $signed({1'b0, cursor_x});
         dy = $signed({1'b0, y}) - $signed({1'b0, cursor_y});
-        if ((dx >= -6 && dx <= 6 && dy == 0) || (dy >= -6 && dy <= 6 && dx == 0))
-            rgb = slash_active ? 12'hF00 : 12'hFFF;
+        // Cursor is composited above menus by cursor_settings.
         for (i = 0; i < 3; i = i + 1)
         if (heart[i] && heart_levels[i*4+:4] != 0) rgb = {heart_levels[i*4+:4], 8'h22};
         if (!video_on) rgb = 0;

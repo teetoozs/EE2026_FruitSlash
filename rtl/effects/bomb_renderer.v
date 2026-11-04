@@ -6,6 +6,13 @@ module bomb_renderer #(parameter N=8, parameter RADIUS=18)(
  input [8:0] age, output reg pixel_on, output reg [11:0] rgb
 );
  integer i;
+ reg signed [15:0] selected_x,selected_y;
+ always @(*) begin
+ selected_x=0;selected_y=0;
+ for(i=0;i<N;i=i+1) if(active[i]) begin
+ selected_x=origins_x[i*16+:16];selected_y=origins_y[i*16+:16];
+ end
+ end
  reg signed [12:0] cx,cy,dx,dy;
  reg [12:0] ax,ay,dist,minor,major,reach,width,travel,fx,fy;
  reg body,ray,crack,fragment;
@@ -14,18 +21,18 @@ module bomb_renderer #(parameter N=8, parameter RADIUS=18)(
   pixel_on=0;rgb=0;cx=0;cy=0;dx=0;dy=0;ax=0;ay=0;dist=0;
   minor=0;major=0;reach=0;width=0;travel=0;fx=0;fy=0;
   body=0;ray=0;crack=0;fragment=0;phase=0;
-  for(i=0;i<N;i=i+1) begin
-   cx=$signed(origins_x[i*16+:16])>>>4;
-   cy=$signed(origins_y[i*16+:16])>>>4;
-   dx=$signed({1'b0,x})-cx;dy=$signed({1'b0,y})-cy;
+  begin
+   cx=$signed(selected_x)>>>4;
+   cy=$signed(selected_y)>>>4;
+   dx=$signed({1'b0,x})-cx+(age>=180 ? (age[1] ? 13'sd6:-13'sd6):13'sd0);dy=$signed({1'b0,y})-cy+(age>=180 ? (age[2] ? 13'sd4:-13'sd4):13'sd0);
    ax=dx<0 ? -dx:dx;ay=dy<0 ? -dy:dy;
    major=ax>ay ? ax:ay;minor=ax>ay ? ay:ax;
    dist=major+(minor>>1);
    body=major<=RADIUS && dist<=RADIUS+(RADIUS>>2);
-   if(active[i] && age<240) begin
+   if((|active) && age<240) begin
     if(age<180) begin
      // Staggered seams widen slowly; short tapered beams emerge from them.
-     width=1+(age/60);
+     width=1+(age<60 ? 0:age<120 ? 1:2);
      reach=RADIUS+(age>>2);
      crack=age>=24 && (ax<=width ||
            (age>=60 && ay<=width) ||
@@ -45,6 +52,11 @@ module bomb_renderer #(parameter N=8, parameter RADIUS=18)(
      end
     end else begin
      phase=age-180;
+     // Expanding pale sparks along eight rays; no multiplication.
+     if(major>RADIUS && major<RADIUS+((age-180)<<3) &&
+        (minor<=2 || (major-minor)<=2) && (major[3:0]<4)) begin
+       pixel_on=1;rgb=12'hEEE;
+     end
      travel=RADIUS+(phase>>1);
      // Brief local flash, followed by eight small grey shell fragments.
      if(phase<6 && dist<=RADIUS+(phase<<1)) begin

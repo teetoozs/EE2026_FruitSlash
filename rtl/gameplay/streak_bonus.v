@@ -4,6 +4,7 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
  input [9:0] x0,y0,x1,y1,
  input [N-1:0] hits,bomb,missed,
  output active, visible, accepting, cutting, falling,
+ output reg burst=0,
  output reg award=0,
  output reg [8:0] remaining=0, output reg [7:0] streak=0,
  output reg signed [15:0] position_x=0, position_y=0,
@@ -16,6 +17,7 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
  reg latched=0,moved=0;
  reg [3:0] cooldown=0;
  integer i,cuts;
+ reg [3:0] bonus_cuts=0;
  assign active=state==ZOOM || state==CUT || state==FALL;
  assign visible=state!=IDLE;
  assign accepting=state==FLY || state==CUT;
@@ -26,7 +28,7 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
  always @(posedge clk) begin
   award<=0;
   if(reset) begin
-   state<=IDLE;remaining<=0;streak<=0;latched<=0;cooldown<=0;moved<=0;
+   state<=IDLE;remaining<=0;streak<=0;bonus_cuts<=0;burst<=0;latched<=0;cooldown<=0;moved<=0;
    position_x<=0;position_y<=0;radius<=36;fall_age<=0;zoom_age<=0;velocity_y<=0;
   end else if(playing) begin
    if(blade_event) moved<=(x0!=x1 || y0!=y1);
@@ -38,7 +40,7 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
     IDLE: begin
      if(|missed) streak<=0;
      else if(streak+cuts>=TARGET) begin
-      state<=FLY;streak<=0;position_x<=16'sd2560;position_y<=16'sd8000;
+      state<=FLY;streak<=0;burst<=0;position_x<=16'sd2560;position_y<=16'sd8000;
       velocity_y<=-16'sd112;radius<=36;latched<=0;fall_age<=0;
      end else streak<=streak+cuts;
     end
@@ -54,7 +56,7 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
     ZOOM: if(tick) begin
      if(zoom_age==29) begin
       state<=CUT;position_x<=16'sd5120;position_y<=16'sd3840;
-      radius<=54;remaining<=TICKS;latched<=1;cooldown<=0;moved<=0;
+      radius<=54;remaining<=TICKS;bonus_cuts<=0;latched<=1;cooldown<=0;moved<=0;
      end else begin
       zoom_age<=zoom_age+1'b1;
       position_x<=position_x+((16'sd5120-position_x)>>>3);
@@ -68,14 +70,15 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
        state<=FALL;remaining<=0;fall_age<=0;velocity_y<=-16'sd48;
       end else remaining<=remaining-1'b1;
      end
-     if(remaining>1 && contact && slash_active && moved && !latched && cooldown==0) begin
-      award<=1;latched<=1;cooldown<=6;
+     if(bonus_cuts<10 && remaining>1 && contact && slash_active && moved && !latched && cooldown==0) begin
+      award<=1;latched<=1;cooldown<=6;bonus_cuts<=bonus_cuts+1'b1;
+      if(bonus_cuts==9) begin state<=FALL;burst<=1;remaining<=0;fall_age<=0;end
      end
     end
     FALL: if(tick) begin
-     position_y<=position_y+velocity_y;velocity_y<=velocity_y+16'sd4;
+     if(!burst) begin position_y<=position_y+velocity_y;velocity_y<=velocity_y+16'sd4;end
      fall_age<=fall_age+1'b1;
-     if(fall_age==89) begin state<=IDLE;radius<=36;end
+     if(fall_age==(burst ? 29:89)) begin state<=IDLE;radius<=36;end
     end
     default:state<=IDLE;
    endcase
