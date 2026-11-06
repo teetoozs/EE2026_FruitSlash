@@ -21,6 +21,9 @@ module object_physics #(
     output     [N*16-1:0] positions_y
 );
     reg signed [15:0] px[0:N-1], py[0:N-1], vx[0:N-1], vy[0:N-1];
+    // Free-running counter makes each human-timed start choose a different LFSR seed.
+    reg [15:0] entropy_counter = 0;
+    always @(posedge clk) entropy_counter <= entropy_counter + 1'b1;
     reg [15:0] random_state = 16'hACE1;
     reg [ 7:0] spawn_count = 0;
     integer i,slot;
@@ -71,7 +74,7 @@ module object_physics #(
             bomb         <= 0;
             spawn_count  <= 0;
             motion_phase <= 0;
-            random_state <= 16'hACE1;
+            random_state <= (entropy_counter ^ 16'hACE1) | 16'h0001;
         end else if (playing) begin
             active <= active & ~remove_mask;
             // Allocate one slot per clock instead of cascading eight priority chains.
