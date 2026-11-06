@@ -2,7 +2,7 @@
 // Text/end statistics remain to be implemented.
 module sensei_panel (
     input         clk,
-    input versus,aim_selected,input [2:0] aim_origin,aim_target,aim_speed,input [6:0] cooldown,
+    input versus,aim_selected,input [3:0] aim_origin,aim_target,input [2:0] aim_speed,input [1:0] orientation,input [5:0] charge,input [6:0] cooldown,
     input         reset,
     input  [11:0] heart_levels,
     input  [ 1:0] lives,
@@ -26,17 +26,17 @@ module sensei_panel (
     end
     // Snapshot multi-bit status into a mailbox held stable while the
     // OLED domain receives a synchronized request. No torn status buses.
-    reg [62:0] mailbox = 0;
+    reg [72:0] mailbox = 0;
     reg request = 0;
     (* ASYNC_REG="TRUE" *) reg ack_meta = 0, ack_sync = 0;
     (* ASYNC_REG="TRUE" *) reg req_meta = 0, req_sync = 0;
     reg acknowledge = 0;
-    reg [62:0] status = 0;
+    reg [72:0] status = 0;
     always @(posedge clk) begin
         ack_meta <= acknowledge;
         ack_sync <= ack_meta;
         if (request == ack_sync) begin
-            mailbox <= {versus,aim_selected,aim_origin,aim_target,aim_speed,cooldown,multiplier, best_score, heart_levels, lives, difficulty, state, combo};
+            mailbox <= {orientation,charge,versus,aim_selected,aim_origin,aim_target,aim_speed,cooldown,multiplier, best_score, heart_levels, lives, difficulty, state, combo};
             request <= ~request;
         end
     end
@@ -114,37 +114,30 @@ module sensei_panel (
         if (t_combo) colour = 16'hFFFF;
         if (t_mult)  colour = 16'hFC00;
     end
-    wire [2:0] shown_origin=status[60:58],shown_target=status[57:55],shown_speed=status[54:52];
-    wire aim_text,speed_text,ready_text,bomb_text;
-    text_line #(10,0,4,44) aim_label(.x({3'd0,x}),.y({4'd0,y}),.chars("SW5-11 AIM"),.on(aim_text));
-    text_line #(11,0,4,54) speed_label(.x({3'd0,x}),.y({4'd0,y}),.chars({"SW1-4 SPD ",8'h30+{5'd0,shown_speed}}),.on(speed_text));
+    wire [3:0] shown_origin=status[62:59],shown_target=status[58:55];
+    wire [1:0] shown_edge=status[72:71];
+    wire [5:0] shown_charge=status[70:65];
+    wire edge_text,aim_text,speed_text,ready_text,bomb_text;
+    wire [95:0] edge_label=shown_edge==0 ? "L:EDGE BELOW":shown_edge==1 ? "L:EDGE LEFT ":
+                          shown_edge==2 ? "L:EDGE ABOVE":"L:EDGE RIGHT";
+    text_line #(12,0,0,3) edge_name(.x({3'd0,x}),.y({4'd0,y}),.chars(edge_label),.on(edge_text));
+    text_line #(10,0,4,44) aim_label(.x({3'd0,x}),.y({4'd0,y}),.chars("SW1-15 AIM"),.on(aim_text));
+    text_line #(11,0,4,54) speed_label(.x({3'd0,x}),.y({4'd0,y}),.chars("HOLD: POWER"),.on(speed_text));
     text_line #(7,0,4,24) ready_label(.x({3'd0,x}),.y({4'd0,y}),.chars("U:FRUIT"),.on(ready_text));
     text_line #(6,0,4,34) bomb_label(.x({3'd0,x}),.y({4'd0,y}),.chars("R:BOMB"),.on(bomb_text));
-    reg [6:0] aim_x;
-    always @(*) case(shown_origin)
-    0:aim_x=86;1:aim_x=74;2:aim_x=62;3:aim_x=48;4:aim_x=34;5:aim_x=22;default:aim_x=10;
-    endcase
-    wire signed [4:0] angle=$signed({1'b0,shown_target})-$signed({1'b0,shown_origin});
-    reg signed [8:0] arrow_dx;
-    always @(*) begin
-    case(angle<0 ? -angle:angle)
-    0:arrow_dx=0;1:arrow_dx=2;2:arrow_dx=4;3:arrow_dx=7;4:arrow_dx=9;5:arrow_dx=12;default:arrow_dx=16;
-    endcase
-    if(angle>=0) arrow_dx=-arrow_dx;
-    end
-    wire signed [8:0] arrow_px=$signed({2'b0,x})-$signed({2'b0,aim_x});
-    wire signed [8:0] arrow_py=9'sd19-$signed({3'b0,y});
-    wire signed [17:0] arrow_error=(arrow_px<<<4)-arrow_py*arrow_dx;
-    wire arrow_line=y>=3 && y<=19 && arrow_error>=-16 && arrow_error<=16;
+    // A bounded charge bar and switch index markers avoid a costly preview multiplier.
+    wire [6:0] origin_marker=7'd4+shown_origin*7'd6;
+    wire [6:0] target_marker=7'd4+shown_target*7'd6;
     reg [15:0] display_colour;
     always @(*) begin
       display_colour=colour;
-      if(status[62]) begin
+      if(status[64]) begin
         display_colour=16'h1082;
-        if(aim_text || speed_text || ready_text || bomb_text) display_colour=16'hffff;
-        if(status[61] && arrow_line) display_colour=16'hffe0;
-        if(status[61] && y>=18 && y<=20 && x>=aim_x && x<=aim_x+3) display_colour=16'h07e0;
-        if(!status[61] && y>=6 && y<=16 && x>=44 && x<=50) display_colour=16'hF800;
+        if(edge_text || aim_text || speed_text || ready_text || bomb_text) display_colour=16'hffff;
+        if(y>=12 && y<16 && x>=4 && x<4+shown_charge+shown_charge/2) display_colour=16'hffe0;
+        if(status[63] && y>=18 && y<=20 && x>=origin_marker && x<origin_marker+3) display_colour=16'h07e0;
+        if(status[63] && y>=18 && y<=20 && x>=target_marker && x<target_marker+2) display_colour=16'h07ff;
+        if(!status[63] && y>=12 && y<=20 && x>=44 && x<=50) display_colour=16'hF800;
         if(status[51:45]!=0 && x>=86 && y>=26 && y<40) display_colour=16'hF800;
       end
     end

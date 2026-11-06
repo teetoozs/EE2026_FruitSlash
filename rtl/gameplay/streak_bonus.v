@@ -3,6 +3,7 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
  input clk,reset,tick,playing,slash_active,blade_event,contact,
  input [9:0] x0,y0,x1,y1,
  input [N-1:0] hits,bomb,missed,
+ output reg [3:0] fruit_type=0,
  output active, visible, accepting, cutting, falling,
  output reg burst=0,
  output reg award=0,
@@ -12,12 +13,18 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
 );
  localparam IDLE=0,FLY=1,ZOOM=2,CUT=3,FALL=4;
  reg [2:0] state=IDLE;
+ reg [15:0] random_kind=16'hD351;
+ always @(posedge clk) if(reset) random_kind<=16'hD351;
+ else random_kind<={random_kind[14:0],random_kind[15]^random_kind[13]^random_kind[12]^random_kind[10]};
  reg signed [15:0] velocity_y=0;
  reg [5:0] zoom_age=0;
  reg latched=0,moved=0;
  reg [3:0] cooldown=0;
  integer i,cuts;
  reg [3:0] bonus_cuts=0;
+ reg [5:0] base_radius=42;
+ wire [3:0] chosen_kind=random_kind[3:0]>8 ? random_kind[3:0]-9:random_kind[3:0];
+ wire small_kind=chosen_kind==0 || chosen_kind==2 || chosen_kind==3 || chosen_kind==4;
  assign active=state==ZOOM || state==CUT || state==FALL;
  assign visible=state!=IDLE;
  assign accepting=state==FLY || state==CUT;
@@ -40,8 +47,9 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
     IDLE: begin
      if(|missed) streak<=0;
      else if(streak+cuts>=TARGET) begin
+      fruit_type<=chosen_kind;base_radius<=small_kind ? 30:42;
       state<=FLY;streak<=0;burst<=0;position_x<=16'sd2560;position_y<=16'sd8000;
-      velocity_y<=-16'sd112;radius<=36;latched<=0;fall_age<=0;
+      velocity_y<=-16'sd112;radius<=small_kind ? 30:42;latched<=0;fall_age<=0;
      end else streak<=streak+cuts;
     end
     FLY: begin
@@ -56,12 +64,12 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
     ZOOM: if(tick) begin
      if(zoom_age==29) begin
       state<=CUT;position_x<=16'sd5120;position_y<=16'sd3840;
-      radius<=54;remaining<=TICKS;bonus_cuts<=0;latched<=1;cooldown<=0;moved<=0;
+      radius<=base_radius+6;remaining<=TICKS;bonus_cuts<=0;latched<=1;cooldown<=0;moved<=0;
      end else begin
       zoom_age<=zoom_age+1'b1;
       position_x<=position_x+((16'sd5120-position_x)>>>3);
       position_y<=position_y+((16'sd3840-position_y)>>>3);
-      radius<=36+((zoom_age*3)/5);
+      radius<=base_radius+(zoom_age>>2);
      end
     end
     CUT: begin

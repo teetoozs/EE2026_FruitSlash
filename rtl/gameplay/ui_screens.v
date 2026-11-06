@@ -588,11 +588,6 @@ module ui_screens (
     always @* begin
         next_on  = 1'b0;
         next_rgb = 12'h000;
-        // dimmed backdrop for pause and game over (50% dither)
-        if (state[1] && (x[0] ^ y[0])) begin
-            next_on  = 1'b1;
-            next_rgb = 12'h100;
-        end
         case (state)
             2'd0: begin
                 if ((orange || leaf) && !(menu_busy && !mode)) begin
@@ -710,11 +705,12 @@ module cursor_settings(
  .trigger(settings_cut),.cx(10'd512),.cy(10'd280),.colour(12'hD35),.x(x),.y(y),
  .busy(menu_busy),.done(settings_done),.pixel(settings_fx),.rgb(settings_fx_rgb));
  wire title_text,gain_text,back_text,settings_text;
- wire [127:0] gain_label=sensitivity==0 ? "SENSITIVITY 1X   ":
-   sensitivity==1 ? "SENSITIVITY 0.5X ":sensitivity==2 ? "SENSITIVITY 2X   ":"SENSITIVITY 4X   ";
- text_line #(.LEN(8),.K(1),.X0(256),.Y0(144)) settings_title(.x(x),.y(y),.chars("SETTINGS"),.on(title_text));
- text_line #(.LEN(16),.K(1),.X0(192),.Y0(232)) gain_label_text(.x(x),.y(y),.chars(gain_label),.on(gain_text));
- text_line #(.LEN(4),.K(1),.X0(288),.Y0(328)) back_label(.x(x),.y(y),.chars("BACK"),.on(back_text));
+ wire title_edge,gain_edge,back_edge;
+ wire [127:0] gain_label=sensitivity==0 ? "SENSITIVITY 1X  ":
+   sensitivity==1 ? "SENSITIVITY 0.5X":sensitivity==2 ? "SENSITIVITY 2X  ":"SENSITIVITY 4X  ";
+ fancy_text #(.LEN(8),.K(2),.X0(192),.Y0(140)) settings_title(.x(x),.y(y),.chars("SETTINGS"),.fill(title_text),.edge_on(title_edge),.cidx(),.grow());
+ fancy_text #(.LEN(16),.K(1),.X0(192),.Y0(232)) gain_label_text(.x(x),.y(y),.chars(gain_label),.fill(gain_text),.edge_on(gain_edge),.cidx(),.grow());
+ fancy_text #(.LEN(4),.K(1),.X0(288),.Y0(326)) back_label(.x(x),.y(y),.chars("BACK"),.fill(back_text),.edge_on(back_edge),.cidx(),.grow());
  text_line #(.LEN(8),.K(1),.X0(448),.Y0(340)) settings_label(.x(x),.y(y),.chars("SETTINGS"),.on(settings_text));
  wire settings_box=x>=240 && x<400 && y>=430 && y<454;
  assign panel_on=state==0 && (opened || (settings_fruit && !menu_busy) || settings_text || settings_fx);
@@ -723,7 +719,8 @@ module cursor_settings(
   if(opened) begin
    if(x>=176 && x<464 && y>=220 && y<264) panel_rgb=gain_hover ? 12'h963:12'h642;
    if(x>=240 && x<400 && y>=320 && y<352) panel_rgb=back_hover ? 12'h963:12'h642;
-   if(title_text || gain_text || back_text) panel_rgb=12'hFEA;
+   if(title_edge || gain_edge || back_edge) panel_rgb=12'h210;
+   if(title_text || gain_text || back_text) panel_rgb=y[2] ? 12'hFC5:12'hFEA;
   end else begin
    panel_rgb=x<512 && y<280 ? 12'hF8A:12'hC24;
    if(settings_fruit && x[2:0]==3 && y[2:0]==3) panel_rgb=12'hFE8;

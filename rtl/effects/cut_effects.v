@@ -9,6 +9,10 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     input [N-1:0] hit_mask,
     input [N-1:0] bomb,
     input [N*5-1:0] radii,
+    input tri0 [N*4-1:0] fruit_types,
+    input tri0 [N*2-1:0] spins,
+    output reg [N*4-1:0] effect_types=0,
+    output reg [N*2-1:0] effect_spins=0,
     output reg [N*5-1:0] effect_radii = 0,
     output reg [N*2-1:0] cut_direction=0,
     input [N*16-1:0] positions_x,
@@ -23,8 +27,8 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
 );
     reg signed [15:0] px [0:2*N-1];
     reg signed [15:0] py [0:2*N-1];
-    reg signed [15:0] vy [0:2*N-1];
-    reg signed [15:0] vx [0:2*N-1];
+    reg signed [9:0] vy [0:2*N-1];
+    reg signed [8:0] vx [0:2*N-1];
     wire signed [10:0] swipe_dx=$signed({1'b0,blade_x1})-$signed({1'b0,blade_x0});
     wire signed [10:0] swipe_dy=$signed({1'b0,blade_y1})-$signed({1'b0,blade_y0});
     wire [10:0] abs_dx=swipe_dx<0 ? -swipe_dx:swipe_dx;
@@ -32,6 +36,23 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     // 0 vertical, 1 horizontal, 2 falling diagonal, 3 rising diagonal.
     wire [1:0] direction=abs_dx>({1'b0,abs_dy}<<1) ? 1:
         abs_dy>({1'b0,abs_dx}<<1) ? 0:(swipe_dx[10]^swipe_dy[10]) ? 3:2;
+    // Bounded impulse from swipe displacement; big halves receive half impulse.
+    wire [11:0] swipe_length={1'b0,abs_dx}+{1'b0,abs_dy};
+    wire signed [15:0] impulse=swipe_length>64 ? 16'sd96:16'sd32+$signed({4'b0,swipe_length});
+    wire signed [15:0] drag_x=swipe_dx>48 ? 16'sd48:swipe_dx< -48 ? -16'sd48:swipe_dx;
+    wire signed [15:0] drag_y=swipe_dy>48 ? 16'sd48:swipe_dy< -48 ? -16'sd48:swipe_dy;
+    reg signed [8:0] init_vx0,init_vx1,init_vy0,init_vy1;
+    always @(*) begin
+        init_vx0=drag_x;init_vx1=drag_x;init_vy0=drag_y;init_vy1=drag_y;
+        case(direction)
+         0:begin init_vx0=drag_x-impulse;init_vx1=drag_x+impulse;end
+         1:begin init_vy0=drag_y-impulse;init_vy1=drag_y+impulse;end
+         2:begin init_vx0=drag_x+(impulse>>>1);init_vx1=drag_x-(impulse>>>1);init_vy0=drag_y-(impulse>>>1);init_vy1=drag_y+(impulse>>>1);end
+         3:begin init_vx0=drag_x-(impulse>>>1);init_vx1=drag_x+(impulse>>>1);init_vy0=drag_y-(impulse>>>1);init_vy1=drag_y+(impulse>>>1);end
+        endcase
+    end
+    reg [2*N-1:0] move_pending=0;
+    reg [$clog2(2*N+1)-1:0] move_index=0;
     reg [6:0] life [0:2*N-1];
     reg [4:0] age [0:N-1];
     integer i;
@@ -47,8 +68,8 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
     endgenerate
     always @(posedge clk) begin
         if (reset) begin
-            splash_active <= 0;
-            effect_radii <= 0;cut_direction<=0;
+            splash_active <= 0;move_pending<=0;move_index<=0;
+            effect_radii <= 0;cut_direction<=0;effect_types<=0;effect_spins<=0;
             splash_x <= 0;
             splash_y <= 0;
             for (i = 0; i < N; i = i + 1) age[i] <= 0;
@@ -67,22 +88,24 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
                         else age[i] <= age[i] + 1'b1;
                     end
                 end
-                for (i = 0; i < 2*N; i = i + 1) begin
-                    if (halves_active[i]) begin
-                        // Even pieces are left semicircles, odd pieces right semicircles.
-                        px[i] <= px[i] + vx[i];
-                        py[i] <= py[i] + vy[i];
-                        vy[i] <= vy[i] + 16'sd4;
-                        life[i] <= life[i] - 1'b1;
-                        if (life[i] <= 1 || py[i] > 16'sd8000 ||
-                            px[i] < -16'sd512 || px[i] > 16'sd10752)
-                            halves_active[i] <= 0;
-                    end
+                move_pending<=halves_active;move_index<=0;
+            end else if(move_index<2*N) begin
+                move_index<=move_index+1'b1;
+                move_pending[move_index]<=0;
+                if(move_pending[move_index] && halves_active[move_index]) begin
+                    px[move_index]<=px[move_index]+$signed(vx[move_index]);
+                    py[move_index]<=py[move_index]+$signed(vy[move_index]);
+                    vy[move_index]<=vy[move_index]+10'sd4;
+                    life[move_index]<=life[move_index]-1'b1;
+                    if(life[move_index]<=1 || py[move_index]>16'sd8000 ||
+                       px[move_index]<-16'sd512 || px[move_index]>16'sd10752)
+                       halves_active[move_index]<=0;
                 end
             end
             for (i = 0; i < N; i = i + 1) begin
                 if (hit_mask[i]) begin
                     if (!bomb[i]) begin
+                        effect_types[i*4+:4]<=fruit_types[i*4+:4];effect_spins[i*2+:2]<=spins[i*2+:2];
                         effect_radii[i*5+:5] <= VARIABLE_RADIUS ? radii[i*5+:5] : 5'd18;
                         splash_active[i] <= 1;
                         splash_x[i*16+:16] <= positions_x[i*16+:16];
@@ -96,12 +119,12 @@ module cut_effects #(parameter N = 8, parameter VARIABLE_RADIUS = 0) (
                         py[2*i] <= positions_y[i*16+:16];
                         py[2*i+1] <= positions_y[i*16+:16];
                         cut_direction[i*2+:2]<=direction;
-                        case(direction)
-                          0:begin vx[2*i]<=-32;vx[2*i+1]<=32;vy[2*i]<=16;vy[2*i+1]<=16;end
-                          1:begin vx[2*i]<=0;vx[2*i+1]<=0;vy[2*i]<=-32;vy[2*i+1]<=32;end
-                          2:begin vx[2*i]<=24;vx[2*i+1]<=-24;vy[2*i]<=-24;vy[2*i+1]<=24;end
-                          3:begin vx[2*i]<=-24;vx[2*i+1]<=24;vy[2*i]<=-24;vy[2*i+1]<=24;end
-                        endcase
+                        // The same impulse circuit feeds every hit, including simultaneous cuts.
+                        vx[2*i]<=(VARIABLE_RADIUS && radii[i*5+:5]>15) ? init_vx0>>>1:init_vx0;
+                        vx[2*i+1]<=(VARIABLE_RADIUS && radii[i*5+:5]>15) ? init_vx1>>>1:init_vx1;
+                        vy[2*i]<=(VARIABLE_RADIUS && radii[i*5+:5]>15) ? init_vy0>>>1:init_vy0;
+                        vy[2*i+1]<=(VARIABLE_RADIUS && radii[i*5+:5]>15) ? init_vy1>>>1:init_vy1;
+                        move_pending[2*i]<=0;move_pending[2*i+1]<=0;
                         life[2*i] <= 90;
                         life[2*i+1] <= 90;
                     end

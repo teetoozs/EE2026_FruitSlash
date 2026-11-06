@@ -6,6 +6,8 @@ module pixel_compositor #(
     parameter DETAILED_ART = 0,
     parameter SIZE_SHIFT = 0
 ) (
+    input clk,reset,
+    input [9:0] raster_y,
     input         [     9:0] x,
     input         [     9:0] y,
     input                    video_on,
@@ -26,6 +28,8 @@ module pixel_compositor #(
     input [8:0] explosion_age,
     input         [N*5-1:0] effect_radii,
     input tri0 [N*2-1:0] cut_direction,
+    input tri0 [N*4-1:0] fruit_types,effect_types,
+    input tri0 [N*2-1:0] spins,effect_spins,
     input         [2*N-1:0] halves_active,
     input         [2*N*16-1:0] halves_x,
     input         [2*N*16-1:0] halves_y,
@@ -162,179 +166,280 @@ module pixel_compositor #(
             );
         end
     endgenerate
-    integer i;
-    reg [4:0] radius, extent;
-    reg [11:0] fruit_colour;
-    reg signed [15:0] qx, qy;
-    reg signed [12:0] cx, cy, dx, dy;
-    reg [12:0] abs_x, abs_y;
-    reg signed [13:0] cut_side;
-    // Vertical timber planks: seams, staggered end joints, grain and nail heads.
+    wire fruit_on;
+    wire [11:0] fruit_rgb;
+    scanline_fruits #(.N(N),.SIZE_SHIFT(SIZE_SHIFT),.VARIABLE_RADIUS(VARIABLE_RADIUS),.DETAILED_ART(DETAILED_ART)) fruit_layer(
+      .clk(clk),.reset(reset),.raster_y(raster_y),.x(x),.scene_y(y),
+      .active(active),.bomb(bomb),.positions_x(positions_x),.positions_y(positions_y),.radii(radii),
+      .fruit_types(fruit_types),.spins(spins),.halves_active(halves_active),.halves_x(halves_x),.halves_y(halves_y),
+      .effect_radii(effect_radii),.effect_types(effect_types),.effect_spins(effect_spins),.cut_direction(cut_direction),
+      .pixel_on(fruit_on),.rgb(fruit_rgb));
     wire [5:0] wood_u=x[5:0];
     wire [6:0] wood_v=y[6:0]+(x[6] ? 7'd64:7'd0);
     wire [5:0] grain_phase=wood_u+{3'b0,y[6:4]}+(y[7] ? 6'd3:6'd0);
-    wire wood_grain=(grain_phase[3:0]==0)||(grain_phase[4:0]==7 && y[3]);
+    wire grain=grain_phase[3:0]==0 || (grain_phase[4:0]==7 && y[3]);
     wire nail=(wood_u==6 || wood_u==57) && (wood_v==6 || wood_v==119);
     always @(*) begin
-        rgb = y[5] ? 12'h642 : 12'h753;
-        if (DETAILED_ART) begin
-            rgb=x[6] ? 12'h743:12'h853;
-            if(wood_grain) rgb=x[6] ? 12'h632:12'h742;
-            if(wood_u<2 || wood_v<2) rgb=12'h210;
-            else if(wood_u==2 || wood_v==2) rgb=12'hA75;
-            if(nail) rgb=12'h221;
-            // Darken the outside of the arena to frame the action.
-            if(x<32 || x>=608 || y<16 || y>=464)
-                rgb={1'b0,rgb[11:9],1'b0,rgb[7:5],1'b0,rgb[3:1]};
+        rgb=y[5] ? 12'h642:12'h753;
+        if(DETAILED_ART) begin
+            rgb=x[6] ? 12'h964:12'hA75;
+            if(grain) rgb=x[6] ? 12'h853:12'h964;
+            if(wood_u<2 || wood_v<2) rgb=12'h532;
+            else if(wood_u==2 || wood_v==2) rgb=12'hC97;
+            if(nail) rgb=12'h555;
         end
-        if (wall_on) rgb = wall_rgb;
-        if (splash_pixel) rgb = splash_rgb;
-        cut_side=0;
-        qx           = 0;
-        qy           = 0;
-        cx           = 0;
-        cy           = 0;
-        dx           = 0;
-        dy           = 0;
-        abs_x        = 0;
-        abs_y        = 0;
-        radius       = 18;
-        extent       = 0;
-        fruit_colour = 12'hF40;
-        for (i = 0; i < N; i = i + 1) begin
-            qx     = positions_x[i*16+:16];
-            qy     = positions_y[i*16+:16];
-            cx     = qx >>> 4;
-            cy     = qy >>> 4;
-            dx     = ($signed({1'b0, x}) - cx) >>> SIZE_SHIFT;
-            dy     = ($signed({1'b0, y}) - cy) >>> SIZE_SHIFT;
-            abs_x  = dx < 0 ? -dx : dx;
-            abs_y  = dy < 0 ? -dy : dy;
-            radius = VARIABLE_RADIUS ? radii[i*5+:5] : 5'd18;
-            case (radius)
-                12: extent = extent12(abs_y[4:0]);
-                24: extent = extent24(abs_y[4:0]);
-                default: extent = extent18(abs_y[4:0]);
-            endcase
-            case (i % 4)
-                0: fruit_colour = 12'hF40;
-                1: fruit_colour = 12'hE23;
-                2: fruit_colour = 12'h5D3;
-                3: fruit_colour = 12'hB4E;
-            endcase
-            if (active[i] && abs_y <= radius && abs_x <= extent) begin
-                rgb = bomb[i] ? 12'h111 : fruit_colour;
-                if (DETAILED_ART) begin
-                    // Outlined, shaded original arcade fruit graphics.
-                    if (bomb[i]) begin
-                        rgb = 12'h222;
-                        if (dx < -3 && dy < -3) rgb = 12'h555;
-                    end else begin
-                        if (radius == 24) begin  // Watermelon with dark rind stripes.
-                            rgb = dx[3] ? 12'h294 : 12'h5B3;
-                            if (health[i*2+:2] < 3 && abs_x < 2) rgb = 12'hF76;
-                            if (health[i*2+:2] < 2 && abs_y < 2) rgb = 12'hF76;
-                        end else if (dy > 4)
-                            rgb = {
-                                1'b0,
-                                fruit_colour[11:9],
-                                1'b0,
-                                fruit_colour[7:5],
-                                1'b0,
-                                fruit_colour[3:1]
-                            };
-                        // Rounded highlight, plus peel speckles; no extra multipliers.
-                        if(i%4==0 && dx[2:0]==2 && dy[2:0]==3) rgb=12'hD60;
-                        if(i%4==1 && dx[2:0]==3 && dy[2:0]==2) rgb=12'hFC7;
-                        if(dx>=-9 && dx<=-3 && dy>=-10 && dy<=-4 &&
-                           (dx+dy>=-17) && (dx+dy<=-9)) rgb=12'hFDB;
-                    end
-                    // Faceted spherical lighting: dark rim and lower-right hemisphere.
-                    if ((dx+dy)>$signed({1'b0,radius})/2 || abs_x+2>=extent)
-                        rgb={1'b0,rgb[11:9],1'b0,rgb[7:5],1'b0,rgb[3:1]};
-                    if (abs_x == extent || abs_y == radius) rgb = 12'h321;
-                end
-            end
-            if (DETAILED_ART && active[i]) begin
-                // Leaf/stem or a lit bomb fuse above the circular body.
-                if (dx >= -1 && dx <= 1 && dy >= -$signed(
-                        {1'b0, radius}
-                    ) - 5 && dy < -$signed(
-                        {1'b0, radius}
-                    ))
-                    rgb = bomb[i] ? 12'hFA2 : 12'h653;
-                if (!bomb[i] && dx >= 2 && dx <= 7 && dy >= -$signed(
-                        {1'b0, radius}
-                    ) - 4 && dy <= -$signed(
-                        {1'b0, radius}
-                    ))
-                    rgb = 12'h5B3;
-                // Three visible durability pips above the large fruit.
-                if (!bomb[i] && radius == 24 && dy >= -33 && dy <= -30) begin
-                    if (dx >= -10 && dx <= -6) rgb = health[i*2+:2] >= 1 ? 12'hFE8 : 12'h432;
-                    if (dx >= -2 && dx <= 2) rgb = health[i*2+:2] >= 2 ? 12'hFE8 : 12'h432;
-                    if (dx >= 6 && dx <= 10) rgb = health[i*2+:2] >= 3 ? 12'hFE8 : 12'h432;
-                end
-            end
-        end
-        // Two complementary semicircles per fruit, drawn above intact objects.
-        for (i = 0; i < 2*N; i = i + 1) begin
-            qx = halves_x[i*16+:16];
-            qy = halves_y[i*16+:16];
-            cx = qx >>> 4;
-            cy = qy >>> 4;
-            dx = ($signed({1'b0, x}) - cx) >>> SIZE_SHIFT;
-            dy = ($signed({1'b0, y}) - cy) >>> SIZE_SHIFT;
-            abs_x = dx < 0 ? -dx : dx;
-            abs_y = dy < 0 ? -dy : dy;
-            radius = VARIABLE_RADIUS ? effect_radii[(i/2)*5+:5] : 5'd18;
-            case (radius)
-                12: extent = extent12(abs_y[4:0]);
-                24: extent = extent24(abs_y[4:0]);
-                default: extent = extent18(abs_y[4:0]);
-            endcase
-            case ((i/2) % 4)
-                0: fruit_colour = 12'hF40;
-                1: fruit_colour = 12'hE23;
-                2: fruit_colour = 12'h5D3;
-                3: fruit_colour = 12'hB4E;
-            endcase
-            case(cut_direction[(i/2)*2+:2])
-              1:cut_side=dy;
-              2:cut_side=$signed({dy[12],dy})-$signed({dx[12],dx});
-              3:cut_side=$signed({dy[12],dy})+$signed({dx[12],dx});
-              default:cut_side=dx;
-            endcase
-            if (halves_active[i] && abs_y <= radius && abs_x <= extent &&
-                ((i % 2 == 0 && cut_side < 0) || (i % 2 == 1 && cut_side >= 0))) begin
-                rgb = DETAILED_ART ? fruit_colour : 12'hF40;
-                if (DETAILED_ART) begin
-                    if (radius == 24) rgb = dx[3] ? 12'h294 : 12'h5B3;
-                    else if (dy > 4)
-                        rgb = {1'b0, fruit_colour[11:9], 1'b0, fruit_colour[7:5],
-                               1'b0, fruit_colour[3:1]};
-                    // Rounded highlight, plus peel speckles; no extra multipliers.
-                        if(i%4==0 && dx[2:0]==2 && dy[2:0]==3) rgb=12'hD60;
-                        if(i%4==1 && dx[2:0]==3 && dy[2:0]==2) rgb=12'hFC7;
-                        if(dx>=-9 && dx<=-3 && dy>=-10 && dy<=-4 &&
-                           (dx+dy>=-17) && (dx+dy<=-9)) rgb=12'hFDB;
-                    // Faceted spherical lighting: dark rim and lower-right hemisphere.
-                    if ((dx+dy)>$signed({1'b0,radius})/2 || abs_x+2>=extent)
-                        rgb={1'b0,rgb[11:9],1'b0,rgb[7:5],1'b0,rgb[3:1]};
-                    if (abs_x == extent || abs_y == radius) rgb = 12'h321;
-                    // Exposed cut edge: red flesh for watermelon, pale flesh otherwise.
-                    if (cut_side >= -1 && cut_side <= 1) rgb = radius == 24 ? 12'hF76 : 12'hFDB;
-                end
-            end
-        end
-        if (|explosion_active)
-            rgb = {1'b0, rgb[11:9], 1'b0, rgb[7:5], 1'b0, rgb[3:1]};
-        if (explosion_pixel) rgb = explosion_rgb;
-        dx = $signed({1'b0, x}) - $signed({1'b0, cursor_x});
-        dy = $signed({1'b0, y}) - $signed({1'b0, cursor_y});
-        // Cursor is composited above menus by cursor_settings.
-        for (i = 0; i < 3; i = i + 1)
-        if (heart[i] && heart_levels[i*4+:4] != 0) rgb = {heart_levels[i*4+:4], 8'h22};
-        if (!video_on) rgb = 0;
+        if(wall_on) rgb=wall_rgb;
+        if(splash_pixel) rgb=splash_rgb;
+        if(fruit_on) rgb=fruit_rgb;
+        if(explosion_pixel) rgb=explosion_rgb;
+        if(heart[0] && heart_levels[3:0]!=0) rgb={heart_levels[3:0],8'h22};
+        if(heart[1] && heart_levels[7:4]!=0) rgb={heart_levels[7:4],8'h22};
+        if(heart[2] && heart_levels[11:8]!=0) rgb={heart_levels[11:8],8'h22};
+        if(!video_on) rgb=0;
     end
+endmodule
+
+// Ping-pong line buffer. At 100 MHz a VGA row lasts 3200 cycles.
+// Worst case N=8, radius=24, scale=2: clear640 + 24*(setup1+98) + finish1 = 3017 cycles.
+// Both transparent pixels and object priority are preserved; one shared shape unit.
+module scanline_fruits #(parameter N=8,SIZE_SHIFT=1,VARIABLE_RADIUS=1,DETAILED_ART=1)(
+ input clk,reset,input [9:0] raster_y,x,scene_y,
+ input [N-1:0] active,bomb,input [N*16-1:0] positions_x,positions_y,
+ input [N*5-1:0] radii,effect_radii,input [N*4-1:0] fruit_types,effect_types,
+ input [N*2-1:0] spins,effect_spins,cut_direction,input [2*N-1:0] halves_active,
+ input [2*N*16-1:0] halves_x,halves_y,output pixel_on,output [11:0] rgb);
+ (* ram_style="distributed" *) reg [12:0] pixels[0:2047];
+ reg [1:0] ready=0;
+ reg [9:0] previous_row=1023,clear_x=0;
+ reg bank=0;
+ reg [1:0] state=0;
+ reg [5:0] object_id=0;
+ reg signed [12:0] target_y=0,center_x=0,center_y=0,draw_x=0,last_x=0;
+ reg [4:0] radius=18;
+ reg [3:0] kind=0;
+ reg [1:0] spin=0,direction=0;
+ reg is_bomb=0,is_half=0,half_odd=0;
+ reg candidate_active;
+ reg signed [15:0] candidate_x,candidate_y;
+ reg [4:0] candidate_radius;
+ reg [3:0] candidate_kind;
+ reg [1:0] candidate_spin,candidate_direction;
+ reg candidate_bomb;
+ integer index;
+ always @(*) begin
+  index=0;candidate_active=0;candidate_x=0;candidate_y=0;candidate_radius=18;
+  candidate_kind=0;candidate_spin=0;candidate_direction=0;candidate_bomb=0;
+  if(object_id<N) begin
+   index=object_id;candidate_active=active[index];candidate_bomb=bomb[index];
+   candidate_x=positions_x[index*16+:16];candidate_y=positions_y[index*16+:16];
+   candidate_radius=VARIABLE_RADIUS ? radii[index*5+:5]:18;
+   candidate_kind=fruit_types[index*4+:4];candidate_spin=spins[index*2+:2];
+  end else if(object_id<3*N) begin
+   index=object_id-N;candidate_active=halves_active[index];
+   candidate_x=halves_x[index*16+:16];candidate_y=halves_y[index*16+:16];
+   candidate_radius=VARIABLE_RADIUS ? effect_radii[(index/2)*5+:5]:18;
+   candidate_kind=effect_types[(index/2)*4+:4];candidate_spin=effect_spins[(index/2)*2+:2];
+   candidate_direction=cut_direction[(index/2)*2+:2];
+  end
+ end
+ wire signed [12:0] candidate_cx=candidate_x>>>4,candidate_cy=candidate_y>>>4;
+ wire signed [12:0] candidate_span=$signed({8'b0,candidate_radius})<<<SIZE_SHIFT;
+ wire candidate_row=target_y>=candidate_cy-candidate_span-(13'sd5<<<SIZE_SHIFT) && target_y<=candidate_cy+candidate_span+((13'sd1<<<SIZE_SHIFT)-1);
+ wire signed [12:0] raw_dx=(draw_x-center_x)>>>SIZE_SHIFT,raw_dy=(target_y-center_y)>>>SIZE_SHIFT;
+ reg signed [12:0] dx,dy;
+ reg signed [13:0] side;
+ reg [12:0] ax,ay,inner_y;
+ reg [4:0] extent,inner_extent;
+ reg body,stem;
+    function [4:0] extent18;
+        input [4:0] row;
+        begin
+            case (row)
+                5'd0: extent18 = 5'd18;
+                5'd1: extent18 = 5'd17;
+                5'd2: extent18 = 5'd17;
+                5'd3: extent18 = 5'd17;
+                5'd4: extent18 = 5'd17;
+                5'd5: extent18 = 5'd17;
+                5'd6: extent18 = 5'd16;
+                5'd7: extent18 = 5'd16;
+                5'd8: extent18 = 5'd16;
+                5'd9: extent18 = 5'd15;
+                5'd10: extent18 = 5'd14;
+                5'd11: extent18 = 5'd14;
+                5'd12: extent18 = 5'd13;
+                5'd13: extent18 = 5'd12;
+                5'd14: extent18 = 5'd11;
+                5'd15: extent18 = 5'd9;
+                5'd16: extent18 = 5'd8;
+                5'd17: extent18 = 5'd5;
+                5'd18: extent18 = 5'd0;
+                default: extent18 = 0;
+            endcase
+        end
+    endfunction
+
+    function [4:0] extent12;
+        input [4:0] row;
+        begin
+            case (row)
+                0: extent12 = 12;
+                1: extent12 = 11;
+                2: extent12 = 11;
+                3: extent12 = 11;
+                4: extent12 = 11;
+                5: extent12 = 10;
+                6: extent12 = 10;
+                7: extent12 = 9;
+                8: extent12 = 8;
+                9: extent12 = 7;
+                10: extent12 = 6;
+                11: extent12 = 4;
+                12: extent12 = 0;
+                default: extent12 = 0;
+            endcase
+        end
+    endfunction
+    function [4:0] extent24;
+        input [4:0] row;
+        begin
+            case (row)
+                0: extent24 = 24;
+                1: extent24 = 23;
+                2: extent24 = 23;
+                3: extent24 = 23;
+                4: extent24 = 23;
+                5: extent24 = 23;
+                6: extent24 = 23;
+                7: extent24 = 22;
+                8: extent24 = 22;
+                9: extent24 = 22;
+                10: extent24 = 21;
+                11: extent24 = 21;
+                12: extent24 = 20;
+                13: extent24 = 20;
+                14: extent24 = 19;
+                15: extent24 = 18;
+                16: extent24 = 17;
+                17: extent24 = 16;
+                18: extent24 = 15;
+                19: extent24 = 14;
+                20: extent24 = 13;
+                21: extent24 = 11;
+                22: extent24 = 9;
+                23: extent24 = 6;
+                24: extent24 = 0;
+                default: extent24 = 0;
+            endcase
+        end
+    endfunction
+
+ always @(*) begin
+  dx=raw_dx;dy=raw_dy;
+  case(direction)
+   1:side=raw_dy;2:side=$signed({raw_dy[12],raw_dy})-$signed({raw_dx[12],raw_dx});
+   3:side=$signed({raw_dy[12],raw_dy})+$signed({raw_dx[12],raw_dx});default:side=raw_dx;
+  endcase
+  if(DETAILED_ART && kind==4 && !is_bomb) case(spin)
+   1:begin dx=raw_dy;dy=-raw_dx;end
+   2:begin dx=-raw_dx;dy=-raw_dy;end
+   3:begin dx=-raw_dy;dy=raw_dx;end
+  endcase
+  ax=dx<0 ? -dx:dx;ay=dy<0 ? -dy:dy;
+  case(radius)
+   12:extent=extent12(ay[4:0]);24:extent=extent24(ay[4:0]);default:extent=extent18(ay[4:0]);
+  endcase
+  body=ay<=radius && ax<=extent;inner_y=0;inner_extent=0;
+  if(DETAILED_ART && !is_bomb) begin
+   if(kind==4) begin
+    inner_y=(dy+$signed({1'b0,radius}>>2))<0 ? -(dy+$signed({1'b0,radius}>>2)):(dy+$signed({1'b0,radius}>>2));
+    inner_extent=radius==12 ? extent12(inner_y[4:0]):extent18(inner_y[4:0]);
+    body=body && !(inner_y<radius && inner_extent>4 && ax+4<inner_extent);
+   end
+   if(kind==6 && dy<0) body=body && $signed({1'b0,ax})<=$signed({1'b0,radius})+(dy>>>1);
+  end
+  if(is_half) body=body && (half_odd ? side>=0:side<0);
+  stem=DETAILED_ART && !is_half && dy<-$signed({1'b0,radius}) &&
+       dy>=-$signed({1'b0,radius})-5 && ax<=(kind==7 && !is_bomb ? 6:1);
+ end
+ wire [11:0] surface_rgb;
+ fruit_surface surface(.dx(dx),.dy(dy),.radius({1'b0,radius}),.kind(kind),.bomb(is_bomb),
+ .cut_edge(is_half && side>=-1 && side<=1),.rgb(surface_rgb));
+ wire [11:0] colour=DETAILED_ART ? (stem ? (is_bomb ? 12'hFF8:12'h5B3):surface_rgb):is_bomb ? 12'h111:12'hF40;
+ wire [12:0] current_pixel=pixels[{raster_y[0],x}];
+ assign pixel_on=ready[raster_y[0]] && current_pixel[12] && x<640;
+ assign rgb=current_pixel[11:0];
+ always @(posedge clk) begin
+  if(reset) begin ready<=0;state<=0;previous_row<=1023;end
+  else if(raster_y!=previous_row) begin
+   previous_row<=raster_y;bank<=raster_y==524 ? 1'b0:~raster_y[0];ready[raster_y==524 ? 1'b0:~raster_y[0]]<=0;
+   // Row524 pre-renders row0 during vertical blank; normal rows render their successor.
+   target_y<=raster_y>=479 ? 0:$signed({3'b0,scene_y})+13'sd1;
+   clear_x<=0;object_id<=0;state<=1;
+  end else case(state)
+   1:begin
+    pixels[{bank,clear_x}]<=0;
+    if(clear_x==639) state<=2;else clear_x<=clear_x+1'b1;
+   end
+   2:begin
+    if(object_id>=3*N) begin state<=0;ready[bank]<=1;end
+    else if(candidate_active && candidate_row) begin
+     center_x<=candidate_cx;center_y<=candidate_cy;radius<=candidate_radius;
+     kind<=candidate_kind;spin<=candidate_spin;direction<=candidate_direction;is_bomb<=candidate_bomb;
+     is_half<=object_id>=N;half_odd<=(object_id-N)%2;
+     draw_x<=candidate_cx-candidate_span;last_x<=candidate_cx+candidate_span+((13'sd1<<<SIZE_SHIFT)-1);
+     state<=3;
+    end else object_id<=object_id+1'b1;
+   end
+   3:begin
+    if(draw_x>=0 && draw_x<640 && (body || stem)) pixels[{bank,draw_x[9:0]}]<={1'b1,colour};
+    if(draw_x==last_x) begin state<=2;object_id<=object_id+1'b1;end
+    else draw_x<=draw_x+1'b1;
+   end
+  endcase
+ end
+endmodule
+
+// Shared procedural 2.5D surface: nine identities, coloured rim, specular light.
+module fruit_surface(input signed [12:0] dx,dy,input [5:0] radius,
+ input [3:0] kind,input bomb,cut_edge,output reg [11:0] rgb);
+ wire [12:0] ax=dx<0 ? -dx:dx,ay=dy<0 ? -dy:dy;
+ wire signed [13:0] lighting=$signed({dx[12],dx})+$signed({dy[12],dy});
+ reg [11:0] base,bright,dark;
+ function [11:0] blend;
+ input [11:0] a,b;
+ reg [4:0] rr,gg,bb;
+ begin rr={1'b0,a[11:8]}+{1'b0,b[11:8]};gg={1'b0,a[7:4]}+{1'b0,b[7:4]};bb={1'b0,a[3:0]}+{1'b0,b[3:0]};blend={rr[4:1],gg[4:1],bb[4:1]};end
+ endfunction
+ always @(*) begin
+  case(kind)
+   0:begin base=12'hF82;bright=12'hFD8;dark=12'hB40;end // orange
+   1:begin base=12'hE33;bright=12'hFA9;dark=12'h912;end // apple
+   2:begin base=12'h7D3;bright=12'hCF8;dark=12'h382;end // lime
+   3:begin base=12'hA4D;bright=12'hEAF;dark=12'h623;end // plum
+   4:begin base=12'hFD3;bright=12'hFFB;dark=12'hC81;end // banana
+   5:begin base=12'h5B3;bright=12'hAF8;dark=12'h263;end // watermelon
+   6:begin base=12'hBD4;bright=12'hEF9;dark=12'h693;end // pear
+   7:begin base=12'hDA3;bright=12'hFED;dark=12'h863;end // pineapple
+   default:begin base=12'hA75;bright=12'hDC9;dark=12'h642;end // coconut
+  endcase
+  if(bomb) begin base=12'h556;bright=12'hCDF;dark=12'h223;end
+  rgb=base;
+  if(lighting<0) rgb=blend(base,bright);
+  else if(lighting>0) rgb=blend(base,dark);
+  if(lighting< -$signed({1'b0,radius})/3) rgb=bright;
+  if(lighting>$signed({1'b0,radius})/2) rgb=dark;
+  if(!bomb) begin
+   if(kind==5 && (dx[3:0]+dy[4:2])<4) rgb=dark;
+   if(kind==7 && ((dx+dy)&7)==0) rgb=dark;
+   if(kind==8 && dx[2:0]==dy[2:0]) rgb=dark;
+   if(kind==0 && dx[2:0]==2 && dy[2:0]==3) rgb=12'hE61;
+   if(kind==4 && ax>radius-3) rgb=12'h853;
+  end
+  if(ax+ay>radius+(radius>>2)) rgb=dark;
+  // Local glint and reflected rim create volume without a screen-wide overlay.
+  if(dx<0 && dy<0 && ax>radius/4 && ax<radius/2 && ay>radius/4 && ay<radius/2) rgb=bomb ? 12'hFFF:12'hFFE;
+  if(dx>0 && ax+2>=radius && ay<radius/3) rgb=bright;
+  if(cut_edge) rgb=kind==5 ? 12'hF57:kind==8 ? 12'hFFF:12'hFEA;
+ end
 endmodule

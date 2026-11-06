@@ -19,7 +19,7 @@ module fruit_slash_top (
     output [ 7:0] seg
 );
     localparam N = 8;
-    // SW15 reset; SW3 fallback; SW0 pause; SW2:1 difficulty.
+    // SW0 pause; versus uses every SW1..SW15 for aim. Power-on reset only.
     (* ASYNC_REG="TRUE" *) reg [15:0] sw_meta = 0, sw_sync = 0;
     reg [7:0] power_count = 0;
     always @(posedge clk) begin
@@ -27,7 +27,7 @@ module fruit_slash_top (
         sw_sync <= sw_meta;
         if (power_count != 255) power_count <= power_count + 1'b1;
     end
-    wire reset = (power_count != 255) || sw_sync[15];
+    wire reset = (power_count != 255);
     wire [4:0] held, pressed;
     wire menu_return,quit_open,quit_pixel;
     wire [11:0] quit_rgb;
@@ -107,11 +107,14 @@ module fruit_slash_top (
         end
     end
     wire [N*5-1:0] radii;
+    wire [N*4-1:0] fruit_types,effect_types;
+    wire [N*2-1:0] fruit_spins,effect_spins;
+    wire [3:0] bonus_type;
     genvar slot;
     generate
         for (slot = 0; slot < N; slot = slot + 1) begin : fruit_sizes
             assign radii[slot*5+:5] = bomb[slot] ? 5'd18 :
-                                  (slot%2==0 ? 5'd12 : 5'd18);
+                                  ((fruit_types[slot*4+:4]==0 || fruit_types[slot*4+:4]==2 || fruit_types[slot*4+:4]==3 || fruit_types[slot*4+:4]==4) ? 5'd12:5'd18);
         end
     endgenerate
     wire [15:0] score, best_score;
@@ -134,6 +137,11 @@ module fruit_slash_top (
     wire ui_on, ui_start,mode_menu_busy,settings_menu_busy;
     wire [11:0] ui_rgb;
     wire [9:0] pixel_x, pixel_y;
+    wire shake=bonus_burst && bonus_visible && bonus_fall_age<18;
+    wire signed [11:0] shifted_x=$signed({2'b0,pixel_x})+(shake ? (bonus_fall_age[1] ? 12'sd3:-12'sd3):12'sd0);
+    wire signed [11:0] shifted_y=$signed({2'b0,pixel_y})+(shake ? (bonus_fall_age[2] ? 12'sd2:-12'sd2):12'sd0);
+    wire [9:0] scene_x=shifted_x<0 ? 0:shifted_x>639 ? 639:shifted_x[9:0];
+    wire [9:0] scene_y=shifted_y<0 ? 0:shifted_y>479 ? 479:shifted_y[9:0];
     ui_screens ui (
         .clk(clk), .x(pixel_x), .y(pixel_y), .state(state),
         .blade_event(blade_event),.previous_x(previous_x),.previous_y(previous_y),
@@ -166,19 +174,23 @@ module fruit_slash_top (
         .multiplier   (multiplier)
     );
     wire throw_launch,throw_bomb,aim_selected;
-    wire [2:0] aim_origin,aim_target,aim_speed;
+    wire [3:0] aim_origin,aim_target;
+    wire [2:0] aim_speed;
+    wire [1:0] aim_edge;
+    wire [5:0] aim_charge;
     wire [6:0] throw_cooldown;
-    wire signed [15:0] throw_x,throw_vx,throw_vy;
+    wire signed [15:0] throw_x,throw_y,throw_vx,throw_vy;
     versus_controls throws(.clk(clk),.reset(reset||new_round||menu_return),.tick(game_tick),
-      .enabled(game_mode && gameplay_enabled),.switches(sw_sync[11:5]),.speed_switches(sw_sync[4:1]),
-      .fruit_press(pressed[1]),.bomb_press(pressed[4]),.launch(throw_launch),.bomb(throw_bomb),
+      .enabled(game_mode && gameplay_enabled),.switches(sw_sync[15:1]),
+      .fruit_hold(held[1]),.bomb_hold(held[4]),.rotate_press(pressed[3]),.launch(throw_launch),.bomb(throw_bomb),
       .origin(aim_origin),.target(aim_target),.selected(aim_selected),.speed(aim_speed),
-      .cooldown(throw_cooldown),.start_x(throw_x),.velocity_x(throw_vx),.velocity_y(throw_vy));
+      .orientation(aim_edge),.charge(aim_charge),.cooldown(throw_cooldown),.start_y(throw_y),.start_x(throw_x),.velocity_x(throw_vx),.velocity_y(throw_vy));
     object_physics #(
         .N(N)
     ) objects (
+        .fruit_types(fruit_types),.spins(fruit_spins),
         .versus(game_mode),.launch(throw_launch),.launch_bomb(throw_bomb),
-        .launch_x(throw_x),.launch_vx(throw_vx),.launch_vy(throw_vy),
+        .launch_x(throw_x),.launch_y(throw_y),.launch_vx(throw_vx),.launch_vy(throw_vy),
         .clk        (clk),
         .reset      (reset || new_round || menu_return),
         .game_tick  (game_tick && !slice_busy && !bomb_busy && !(|raw_hit_mask) && !(|destroyed) && !bonus_contact),
@@ -239,6 +251,7 @@ module fruit_slash_top (
         .blade_x0(previous_x),.blade_y0(previous_y),.blade_x1(cursor_x),.blade_y1(cursor_y),
         .radii(radii),
         .effect_radii(effect_radii),.cut_direction(cut_direction),
+        .fruit_types(fruit_types),.spins(fruit_spins),.effect_types(effect_types),.effect_spins(effect_spins),
         .clk        (clk),
         .reset      (reset || new_round || menu_return),
         .game_tick  (game_tick && !(|(hit_mask & bomb))),
@@ -259,8 +272,8 @@ module fruit_slash_top (
     wire [11:0] wall_rgb;
     wall_splats #(.N(N)) wall(.clk(clk),.reset(reset||new_round||menu_return),.tick(game_tick),
       .playing(gameplay_enabled),.hits(hit_mask),.bomb(bomb),.px(positions_x),.py(positions_y),
-      .x(pixel_x),.y(pixel_y),.pixel_on(wall_on),.rgb(wall_rgb));
-    streak_bonus #(.N(N)) bonus(.clk(clk),.reset(reset||new_round||state==3),
+      .x(scene_x),.y(scene_y),.pixel_on(wall_on),.rgb(wall_rgb));
+    streak_bonus #(.N(N)) bonus(.fruit_type(bonus_type),.clk(clk),.reset(reset||new_round||state==3),
       .tick(game_tick && !(bonus_busy && !bonus_active)),
       .playing(playing&&!bomb_busy),.slash_active(slash_active),.blade_event(blade_event),
       .contact(bonus_contact),.x0(previous_x),.y0(previous_y),.x1(cursor_x),.y1(cursor_y),
@@ -276,10 +289,10 @@ module fruit_slash_top (
       .positions_x(bonus_x),.positions_y(bonus_y),.hit_mask(bonus_contact),.busy(bonus_busy));
     wire bonus_view_on, blast_view_on;
     wire [11:0] bonus_view_rgb, blast_view_rgb;
-    bonus_fruit_view bonus_view(.tick(game_tick),.clk(clk),.reset(reset||new_round||menu_return),.active(bonus_visible),
+    bonus_fruit_view bonus_view(.fruit_type(bonus_type),.tick(game_tick),.clk(clk),.reset(reset||new_round||menu_return),.active(bonus_visible),
       .falling(bonus_falling),.burst(bonus_burst),.position_x(bonus_x),.position_y(bonus_y),
       .radius(bonus_radius),.fall_age(bonus_fall_age),.cut(bonus_award),.x0(previous_x),.y0(previous_y),.x1(cursor_x),.y1(cursor_y),
-      .x(pixel_x),.y(pixel_y),.pixel_on(bonus_view_on),.rgb(bonus_view_rgb));
+      .x(scene_x),.y(scene_y),.pixel_on(bonus_view_on),.rgb(bonus_view_rgb));
     bomb_renderer #(.N(N), .RADIUS(36)) full_blast(.x(pixel_x),.y(pixel_y),.active(explosion_active),
       .origins_x(explosion_x),.origins_y(explosion_y),.age(explosion_age),
       .pixel_on(blast_view_on),.rgb(blast_view_rgb));
@@ -304,13 +317,15 @@ module fruit_slash_top (
         .DETAILED_ART(1), .SIZE_SHIFT(1),
         .VARIABLE_RADIUS(1)
     ) compositor (
+        .clk(clk),.reset(reset),.raster_y(pixel_y),
         .effect_radii(effect_radii),.cut_direction(cut_direction),
+        .fruit_types(fruit_types),.spins(fruit_spins),.effect_types(effect_types),.effect_spins(effect_spins),
         .health      (fruit_health),
         .radii       (radii),
         .heart_levels(bomb_busy ? frozen_hearts : heart_levels),
         .wall_on(wall_on), .wall_rgb(wall_rgb),
-        .x           (pixel_x),
-        .y           (pixel_y),
+        .x           (scene_x),
+        .y           (scene_y),
         .video_on    (video_on),
         .state       (state),
         .cursor_x    (bomb_busy ? frozen_cursor_x : cursor_x),
@@ -375,7 +390,7 @@ module fruit_slash_top (
     );
     sensei_panel oled (
         .versus(game_mode),.aim_origin(aim_origin),.aim_target(aim_target),
-        .aim_speed(aim_speed),.aim_selected(aim_selected),.cooldown(throw_cooldown),
+        .orientation(aim_edge),.charge(aim_charge),.aim_speed(aim_speed),.aim_selected(aim_selected),.cooldown(throw_cooldown),
         .heart_levels(heart_levels),
         .clk         (clk),
         .reset       (reset),

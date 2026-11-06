@@ -31,7 +31,7 @@ module game_controller #(
     wire [16:0] score_sum={1'b0,score}+pending_points;
     wire [15:0] next_score=score_sum[16] ? 16'hffff:score_sum[15:0];
     wire [2:0] capped_combo=combo>=MAX_MULT ? MAX_MULT:combo[2:0];
-    assign multiplier = (combo + 1 > MAX_MULT) ? MAX_MULT : combo + 1;
+    assign multiplier = 3'd1;
     assign playing   = (state == 1) && !pause;
     assign new_round = start_pressed && !effects_busy && (state == 0 || state == 3);
     always @(*) begin
@@ -44,72 +44,14 @@ module game_controller #(
             if (bomb[i]) bombs = 1;
             else fruits = fruits + 1;
         end
-        // Compact truth table replaces a serial chain of adders.
-        fruit_points=0;
-        case({capped_combo,fruits})
-            7'd0: fruit_points=9'd0;
-            7'd1: fruit_points=9'd10;
-            7'd2: fruit_points=9'd30;
-            7'd3: fruit_points=9'd60;
-            7'd4: fruit_points=9'd100;
-            7'd5: fruit_points=9'd150;
-            7'd6: fruit_points=9'd200;
-            7'd7: fruit_points=9'd250;
-            7'd8: fruit_points=9'd300;
-            7'd16: fruit_points=9'd0;
-            7'd17: fruit_points=9'd20;
-            7'd18: fruit_points=9'd50;
-            7'd19: fruit_points=9'd90;
-            7'd20: fruit_points=9'd140;
-            7'd21: fruit_points=9'd190;
-            7'd22: fruit_points=9'd240;
-            7'd23: fruit_points=9'd290;
-            7'd24: fruit_points=9'd340;
-            7'd32: fruit_points=9'd0;
-            7'd33: fruit_points=9'd30;
-            7'd34: fruit_points=9'd70;
-            7'd35: fruit_points=9'd120;
-            7'd36: fruit_points=9'd170;
-            7'd37: fruit_points=9'd220;
-            7'd38: fruit_points=9'd270;
-            7'd39: fruit_points=9'd320;
-            7'd40: fruit_points=9'd370;
-            7'd48: fruit_points=9'd0;
-            7'd49: fruit_points=9'd40;
-            7'd50: fruit_points=9'd90;
-            7'd51: fruit_points=9'd140;
-            7'd52: fruit_points=9'd190;
-            7'd53: fruit_points=9'd240;
-            7'd54: fruit_points=9'd290;
-            7'd55: fruit_points=9'd340;
-            7'd56: fruit_points=9'd390;
-            7'd64: fruit_points=9'd0;
-            7'd65: fruit_points=9'd50;
-            7'd66: fruit_points=9'd100;
-            7'd67: fruit_points=9'd150;
-            7'd68: fruit_points=9'd200;
-            7'd69: fruit_points=9'd250;
-            7'd70: fruit_points=9'd300;
-            7'd71: fruit_points=9'd350;
-            7'd72: fruit_points=9'd400;
-            7'd80: fruit_points=9'd0;
-            7'd81: fruit_points=9'd50;
-            7'd82: fruit_points=9'd100;
-            7'd83: fruit_points=9'd150;
-            7'd84: fruit_points=9'd200;
-            7'd85: fruit_points=9'd250;
-            7'd86: fruit_points=9'd300;
-            7'd87: fruit_points=9'd350;
-            7'd88: fruit_points=9'd400;
-            default:fruit_points=0;
-        endcase
+        fruit_points=fruits; // One point per fruit, independent of combo.
         losses = losses + bombs;
     end
     always @(posedge clk) begin
         // Compare the registered score, off the score-adder critical path.
         if(score>best_score) best_score<=score;
         if(reset || new_round) pending_points<=0;
-        else if(playing && !effects_busy) pending_points<=fruit_points+(bonus_hit ? 10'd25:10'd0);
+        else if(playing && !effects_busy) pending_points<=fruit_points+(bonus_hit ? 10'd1:10'd0);
         else pending_points<=0;
         if(!reset && !new_round) score<=next_score;
         if (reset) begin
