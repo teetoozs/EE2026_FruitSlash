@@ -1,6 +1,7 @@
 // Compact blade trail for the Basys3.
-// Thirty-two Bresenham samples form a bright 128-pixel tapered slash.
-// Wide overlapping samples keep diagonal strokes continuous.
+// Thirty-two Bresenham samples form a bright 256-pixel tapered slash.
+// Eight-pixel sample spacing and Chebyshev coverage keep diagonals smooth while
+// the narrow bright core and tapered ends keep the cut sharp.
 module white_blade_trail (
     input clk,
     input reset,
@@ -22,13 +23,12 @@ module white_blade_trail (
     reg [9:0] points_y [0:POINTS-1];
     reg [3:0] life [0:POINTS-1];
     reg [4:0] head = 0;
-    reg [5:0] valid_count = 0;
     reg walking = 0;
     reg [9:0] walk_x = 0, walk_y = 0, end_x = 0, end_y = 0;
     reg signed [11:0] dx = 0, dy = 0, error = 0;
     reg signed [11:0] next_error;
     reg [9:0] next_x, next_y;
-    reg [1:0] spacing = 0;
+    reg [2:0] spacing = 0;
     wire signed [12:0] twice_error = $signed(error) * 2;
     wire signed [11:0] distance_x = cursor_x >= previous_x ?
         $signed({2'b0, cursor_x}) - $signed({2'b0, previous_x}) :
@@ -55,7 +55,6 @@ module white_blade_trail (
     always @(posedge clk) begin
         if (reset || !enabled) begin
             head <= 0;
-            valid_count <= 0;
             walking <= 0;
             spacing <= 0;
             for (i = 0; i < POINTS; i = i + 1) begin
@@ -83,9 +82,10 @@ module white_blade_trail (
                 if (spacing == 0 || (walk_x == end_x && walk_y == end_y)) begin
                     points_x[head] <= walk_x;
                     points_y[head] <= walk_y;
-                    life[head] <= 10;
+                    // Fifteen game ticks gives the silver cut time to fade
+                    // through several shades instead of blinking off.
+                    life[head] <= 15;
                     head <= head + 1'b1;
-                    if (valid_count < POINTS) valid_count <= valid_count + 1'b1;
                 end
                 spacing <= spacing + 1'b1;
                 walk_x <= next_x;
@@ -96,41 +96,38 @@ module white_blade_trail (
         end
     end
 
-    // Palette flags are cheaper than comparing sixteen RGB values.
-    // Together they create a white highlight, silver body and blue-grey edge.
-    reg [9:0] abs_x, abs_y;
-    reg [10:0] distance; // Preserve full Manhattan distance; prevent wraparound.
-    reg [4:0] age_rank;
-    reg [3:0] radius;
-    reg highlight, silver, shadow;
+    // One subtraction per axis; fixed thresholds avoid a dynamic radius
+    // and a 32-way priority chain. The faint outer band joins 8-pixel samples.
+    wire [POINTS-1:0] edge_hits;
+    wire [POINTS-1:0] shade_hits;
+    wire [POINTS-1:0] silver_hits;
+    wire [POINTS-1:0] white_hits;
+    genvar g;
+    generate for (g = 0; g < POINTS; g = g + 1) begin : pixel_sample
+        localparam [4:0] SLOT = g;
+        wire [4:0] age = head - 5'd1 - SLOT;
+        wire [9:0] offset_x = pixel_x - points_x[g];
+        wire [9:0] offset_y = pixel_y - points_y[g];
+        wire x4 = offset_x <= 10'd4 || offset_x >= 10'd1020;
+        wire y4 = offset_y <= 10'd4 || offset_y >= 10'd1020;
+        wire x2 = offset_x <= 10'd2 || offset_x >= 10'd1022;
+        wire y2 = offset_y <= 10'd2 || offset_y >= 10'd1022;
+        wire x1 = offset_x <= 10'd1 || offset_x == 10'd1023;
+        wire y1 = offset_y <= 10'd1 || offset_y == 10'd1023;
+        wire near_tip = age < 3 || age > 28;
+        wire active = life[g] != 0;
+        assign edge_hits[g] = active && ((!near_tip && x4 && y4) ||
+                                          (near_tip && x2 && y2));
+        assign shade_hits[g] = active && life[g] >= 4 && x4 && y4;
+        assign silver_hits[g] = active && life[g] >= 7 && x2 && y2 && !near_tip;
+        assign white_hits[g] = active && life[g] >= 11 && x1 && y1 && !near_tip;
+    end endgenerate
+
     always @(*) begin
-        abs_x = 0;
-        abs_y = 0;
-        distance = 0;
-        age_rank = 0;
-        radius = 0;
-        highlight = 0;
-        silver = 0;
-        shadow = 0;
-        for (j = 0; j < POINTS; j = j + 1) begin
-            age_rank = head - 1'b1 - j[4:0];
-            if(age_rank==0 || age_rank==31) radius=1;
-            else if(age_rank<3 || age_rank>28) radius=3;
-            else if(age_rank<6 || age_rank>25) radius=5;
-            else radius=8;
-            if(life[j]<3 && radius>2) radius=radius-2;
-            abs_x = pixel_x > points_x[j] ? pixel_x - points_x[j] : points_x[j] - pixel_x;
-            abs_y = pixel_y > points_y[j] ? pixel_y - points_y[j] : points_y[j] - pixel_y;
-            distance = {1'b0, abs_x} + {1'b0, abs_y};
-            if (age_rank < valid_count && life[j] != 0 && distance <= radius) begin
-                shadow = 1;
-                if (distance+1 <= radius) silver = 1;
-                if (distance == 0 || distance+2 <= radius) highlight = 1;
-            end
-        end
-        pixel_on = enabled && !reset && shadow;
-        if (highlight) rgb = 12'hFFF;
-        else if (silver) rgb = 12'hEFF;
-        else rgb = 12'hBCD;
+        pixel_on = enabled && !reset && (|edge_hits);
+        if (|white_hits) rgb = 12'hFFF;
+        else if (|silver_hits) rgb = 12'hEFF;
+        else if (|shade_hits) rgb = 12'hCDE;
+        else rgb = 12'h678;
     end
 endmodule
