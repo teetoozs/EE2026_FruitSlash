@@ -389,6 +389,7 @@ module fruit_slash_top (
         .led  (led)
     );
     sensei_panel oled (
+        .launch_x(throw_x),.launch_y(throw_y),.launch_vx(throw_vx),.launch_vy(throw_vy),
         .versus(game_mode),.aim_origin(aim_origin),.aim_target(aim_target),
         .orientation(aim_edge),.charge(aim_charge),.aim_speed(aim_speed),.aim_selected(aim_selected),.cooldown(throw_cooldown),
         .heart_levels(heart_levels),

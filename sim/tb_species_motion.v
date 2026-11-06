@@ -7,15 +7,18 @@ object_physics #(.N(1)) dut(.clk(clk),.reset(reset),.game_tick(tick),.playing(1'
  .difficulty(2'd0),.remove_mask(1'b0));
 task step;begin @(posedge clk);#1;end endtask
 task frame;begin @(negedge clk);tick=1;step;@(negedge clk);tick=0;step;end endtask
+integer k;
 initial begin
- step;@(negedge clk);reset=0;force dut.random_state=16'd5;launch=1;step;
- @(negedge clk);launch=0;repeat(3) step;release dut.random_state;
- if(dut.fruit_types!=5 || dut.vx[0]!=70 || dut.vy[0]!=140) $fatal(1,"watermelon mass capture");
- frame;if(dut.vy[0]!=112) $fatal(1,"watermelon terminal speed");
- @(negedge clk);reset=1;step;@(negedge clk);reset=0;force dut.random_state=16'd4;launch=1;step;
- @(negedge clk);launch=0;repeat(3) step;release dut.random_state;
- if(dut.fruit_types!=4 || dut.vx[0]!=80) $fatal(1,"banana capture");
- frame;if(dut.spins!=1 || dut.vy[0]!=128) $fatal(1,"banana tumble and drag");
- $display("PASS: species identity, heavy launch, watermelon float and banana tumble");$finish;
+ for(k=0;k<16;k=k+1) begin
+  @(negedge clk);reset=1;step;
+  @(negedge clk);reset=0;force dut.random_state=k;launch=1;step;
+  @(negedge clk);launch=0;repeat(4) step;
+  if(dut.fruit_types==4 || dut.fruit_types>8) $fatal(1,"invalid fruit type");
+  if(dut.vx[0]!=80 || dut.vy[0]!=160) $fatal(1,"manual launch differs from preview");
+  frame;
+  if(dut.vy[0]!=163) $fatal(1,"manual gravity differs from preview");
+  release dut.random_state;
+ end
+ $display("PASS: all random selections exclude banana and preserve manual trajectory");$finish;
 end
 endmodule

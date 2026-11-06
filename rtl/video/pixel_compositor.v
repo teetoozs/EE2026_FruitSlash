@@ -356,7 +356,7 @@ module scanline_fruits #(parameter N=8,SIZE_SHIFT=1,VARIABLE_RADIUS=1,DETAILED_A
     inner_extent=radius==12 ? extent12(inner_y[4:0]):extent18(inner_y[4:0]);
     body=body && !(inner_y<radius && inner_extent>4 && ax+4<inner_extent);
    end
-   if(kind==6 && dy<0) body=body && $signed({1'b0,ax})<=$signed({1'b0,radius})+(dy>>>1);
+   if(kind==6 && dy<0) body=body && $signed({1'b0,ax})<=($signed({1'b0,radius})>>>2)+(((dy+$signed({1'b0,radius}))*13'sd3)>>>2);
   end
   if(is_half) body=body && (half_odd ? side>=0:side<0);
   stem=DETAILED_ART && !is_half && dy<-$signed({1'b0,radius}) &&
@@ -405,6 +405,12 @@ module fruit_surface(input signed [12:0] dx,dy,input [5:0] radius,
  input [3:0] kind,input bomb,cut_edge,output reg [11:0] rgb);
  wire [12:0] ax=dx<0 ? -dx:dx,ay=dy<0 ? -dy:dy;
  wire signed [13:0] lighting=$signed({dx[12],dx})+$signed({dy[12],dy});
+ wire signed [13:0] gx=$signed({dx[12],dx})+$signed({8'b0,radius}>>2);
+ wire signed [13:0] gy=$signed({dy[12],dy})+$signed({8'b0,radius}>>2);
+ (* use_dsp="yes" *) wire signed [15:0] gx_squared=$signed(gx[7:0])*$signed(gx[7:0]);
+ (* use_dsp="yes" *) wire signed [15:0] gy_squared=$signed(gy[7:0])*$signed(gy[7:0]);
+ wire [16:0] light_distance={1'b0,gx_squared}+{1'b0,gy_squared};
+ wire [11:0] radius_squared=radius*radius;
  reg [11:0] base,bright,dark;
  function [11:0] blend;
  input [11:0] a,b;
@@ -424,22 +430,19 @@ module fruit_surface(input signed [12:0] dx,dy,input [5:0] radius,
    default:begin base=12'hA75;bright=12'hDC9;dark=12'h642;end // coconut
   endcase
   if(bomb) begin base=12'h556;bright=12'hCDF;dark=12'h223;end
+  // Circular light falloff avoids flat diagonal or horizontal colour bands.
   rgb=base;
-  if(lighting<0) rgb=blend(base,bright);
-  else if(lighting>0) rgb=blend(base,dark);
-  if(lighting< -$signed({1'b0,radius})/3) rgb=bright;
-  if(lighting>$signed({1'b0,radius})/2) rgb=dark;
+  if(light_distance<(radius_squared>>2)) rgb=blend(base,bright);
+  else if(light_distance>(radius_squared+(radius_squared>>1))) rgb=dark;
+  else if(light_distance>radius_squared) rgb=blend(base,dark);
   if(!bomb) begin
-   if(kind==5 && (dx[3:0]+dy[4:2])<4) rgb=dark;
-   if(kind==7 && ((dx+dy)&7)==0) rgb=dark;
-   if(kind==8 && dx[2:0]==dy[2:0]) rgb=dark;
-   if(kind==0 && dx[2:0]==2 && dy[2:0]==3) rgb=12'hE61;
-   if(kind==4 && ax>radius-3) rgb=12'h853;
+   if(kind==5 && ((dx[3:0]+{1'b0,dy[4:2]})&4'hF)<2) rgb=blend(rgb,dark);
+   if(kind==7 && ((dx+dy)&7)==0 && ((dx-dy)&7)<2) rgb=blend(rgb,dark);
+   if(kind==8 && (dx[2:0]^dy[3:1])==3 && dy[1]) rgb=blend(rgb,dark);
+   if(kind==0 && dx[2:0]==2 && dy[2:0]==3) rgb=blend(rgb,12'hD61);
   end
-  if(ax+ay>radius+(radius>>2)) rgb=dark;
-  // Local glint and reflected rim create volume without a screen-wide overlay.
-  if(dx<0 && dy<0 && ax>radius/4 && ax<radius/2 && ay>radius/4 && ay<radius/2) rgb=bomb ? 12'hFFF:12'hFFE;
-  if(dx>0 && ax+2>=radius && ay<radius/3) rgb=bright;
+  if(light_distance<(radius_squared>>4)) rgb=bright;
+  if(light_distance<(radius_squared>>6)) rgb=bomb ? 12'hFFF:12'hFFE;
   if(cut_edge) rgb=kind==5 ? 12'hF57:kind==8 ? 12'hFFF:12'hFEA;
  end
 endmodule
