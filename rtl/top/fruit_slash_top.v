@@ -86,18 +86,20 @@ module fruit_slash_top (
     wire [N-1:0] destroyed;
     wire [N*2-1:0] fruit_health;
     assign hit_mask = destroyed & active & {N{gameplay_enabled}};
-    wire [1:0] state, lives;
-    wire [11:0] heart_levels;
+    wire [1:0] state;
+    wire [2:0] lives,starting_lives;
+    wire [1:0] selected_difficulty;
+    wire [19:0] heart_levels;
     life_animation hearts (
         .clk         (clk),
-        .reset       (reset || new_round),
+        .reset       (reset || new_round || state==0),
         .lives       (lives),
         .heart_levels(heart_levels)
     );
     // Hold the visible cursor and hearts with the world during the cinematic.
     reg [9:0] frozen_cursor_x = 0, frozen_cursor_y = 0;
     reg frozen_slash = 0;
-    reg [11:0] frozen_hearts = 0;
+    reg [19:0] frozen_hearts = 0;
     always @(posedge clk) begin
         if (!bomb_busy) begin
             frozen_cursor_x <= cursor_x;
@@ -157,6 +159,7 @@ module fruit_slash_top (
     ) game (
         .clk          (clk),
         .reset(reset || menu_return),
+        .starting_lives(starting_lives),
         .start_pressed((ui_start || (state==3 && pressed[0])) && !settings_open && !quit_open),
         .pause        (sw_sync[0] || quit_open),
         .effects_busy (bomb_busy),
@@ -195,7 +198,7 @@ module fruit_slash_top (
         .reset      (reset || new_round || menu_return),
         .game_tick  (game_tick && !slice_busy && !bomb_busy && !(|raw_hit_mask) && !(|destroyed) && !bonus_contact),
         .playing    (gameplay_enabled),
-        .difficulty (game_mode ? 2'd0:sw_sync[2:1]),
+        .difficulty (selected_difficulty),
         .remove_mask(hit_mask),
         .missed(missed),
         .active     (active),
@@ -369,7 +372,7 @@ module fruit_slash_top (
       .clk(clk),.reset(reset),.back(pressed[2]),.tick(game_tick),.blade_event(blade_event),.state(state),
       .x(pixel_x),.y(pixel_y),.cx(cursor_x),.cy(cursor_y),
       .px(previous_x),.py(previous_y),.held(slash_active),
-      .sensitivity(mouse_sensitivity),.opened(settings_open),
+      .sensitivity(mouse_sensitivity),.opened(settings_open),.starting_lives(starting_lives),.difficulty(selected_difficulty),
       .panel_on(settings_on),.panel_rgb(settings_rgb),
       .sword_on(katana_on),.sword_rgb(katana_rgb));
     assign {vgaRed, vgaGreen, vgaBlue} = !video_on ? 12'h000 :
@@ -396,7 +399,7 @@ module fruit_slash_top (
         .clk         (clk),
         .reset       (reset),
         .lives       (lives),
-        .difficulty  (sw_sync[2:1]),
+        .difficulty  (selected_difficulty),
         .state       (state),
         .combo       (combo),
         .best_score  (best_score),

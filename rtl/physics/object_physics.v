@@ -38,11 +38,17 @@ module object_physics #(
     reg rare_wave;
     integer free_slots;
     reg [2:0] motion_phase = 0;
+    // Medium keeps 80 updates/100 ticks; Easy=64 (-20%), Hard=92 (+15%).
+    // Change simulation cadence, not launch velocity, so the aiming arc stays accurate.
+    reg [6:0] motion_budget = 0;
+    wire [6:0] motion_rate = difficulty==0 ? 7'd64:difficulty==2 ? 7'd92:7'd80;
+    wire [7:0] motion_sum = {1'b0,motion_budget}+{1'b0,motion_rate};
+    wire move_now=motion_sum>=8'd100;
     reg [2:0] spin_count=0;
     wire [3:0] new_kind=manual ? random_state[3:0]:fruit_random[3:0];
     wire [3:0] spawn_kind=new_kind[2:0]>=4 ? {1'b0,new_kind[2:0]}+4'd1:{1'b0,new_kind[2:0]}; // Eight types, skip banana ID4.
     wire spawn_heavy=spawn_kind==1 || spawn_kind>=5;
-    // Four motion updates per five game ticks: exactly 20% slower on average.
+    // Rate accumulator spreads motion updates evenly without adding a derived clock.
     function [15:0] advance_random;
         input [15:0] value;
         reg [15:0] v;
@@ -76,6 +82,7 @@ module object_physics #(
             bomb         <= 0;
             spawn_count  <= 0;
             motion_phase <= 0;
+            motion_budget <= 0;
         end else if (playing) begin
             active <= active & ~remove_mask;
             // Allocate one slot per clock instead of cascading eight priority chains.
@@ -102,7 +109,7 @@ module object_physics #(
                                     px[scan] <= (16'd120 + {8'd0,fruit_random[7:0]}) << 4;
                                     py[scan] <= 16'sd8000;
                                     vx[scan] <= fruit_random[9] ? (16'sd12 + $signed({12'd0,fruit_random[3:0]})) : -(16'sd12 + $signed({12'd0,fruit_random[3:0]}));
-                                    vy[scan] <= -16'sd152 - $signed({12'd0,fruit_random[7:4]}) - $signed({12'd0,difficulty,2'b00});
+                                    vy[scan] <= -16'sd152 - $signed({12'd0,fruit_random[7:4]});
                                 end
                                 1: begin
                                     px[scan] <= (16'd120 + {8'd0,fruit_random[7:0]}) << 4;
@@ -131,9 +138,10 @@ module object_physics #(
             end
             if (game_tick) begin
                 spin_count<=spin_count+1'b1;
-                motion_phase <= motion_phase == 4 ? 0 : motion_phase + 1'b1;
+                motion_budget <= move_now ? motion_sum-8'd100:motion_sum;
+                if(move_now) motion_phase <= motion_phase==3 ? 0:motion_phase+1'b1;
                 for (i = 0; i < N; i = i + 1)
-                if (active[i] && !remove_mask[i] && motion_phase != 4) begin
+                if (active[i] && !remove_mask[i] && move_now) begin
                     if(spin_count==0 && fruit_types[i*4+:4]==4)
                         spins[i*2+:2]<=vx[i]<0 ? spins[i*2+:2]-1'b1:spins[i*2+:2]+1'b1;
                     px[i] <= px[i] + vx[i];
@@ -152,7 +160,7 @@ module object_physics #(
                         missed[i] <= !bomb[i];
                     end
                 end
-                if (!versus && spawn_count >= (8'd65 - {6'd0,difficulty}*8'd10) && remaining==0) begin
+                if (!versus && spawn_count >= 8'd65 && remaining==0) begin
                     spawn_count<=0;scan<=0;manual<=0;
                     remaining<=random_state<3277 ? 5:(normal_count>WAVE_SIZE ? WAVE_SIZE:normal_count);
                     rare_wave<=random_state<3277;wave_bomb<=random_state[5];fruit_random<=random_state;

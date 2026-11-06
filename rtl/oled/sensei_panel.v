@@ -5,8 +5,8 @@ module sensei_panel (
     input versus,aim_selected,input [3:0] aim_origin,aim_target,input [2:0] aim_speed,input [1:0] orientation,input [5:0] charge,input [6:0] cooldown,
     input signed [15:0] launch_x,launch_y,launch_vx,launch_vy,
     input         reset,
-    input  [11:0] heart_levels,
-    input  [ 1:0] lives,
+    input  [19:0] heart_levels,
+    input  [ 2:0] lives,
     input  [ 1:0] difficulty,
     input  [ 1:0] state,
     input  [ 7:0] combo,
@@ -27,17 +27,17 @@ module sensei_panel (
     end
     // Snapshot multi-bit status into a mailbox held stable while the
     // OLED domain receives a synchronized request. No torn status buses.
-    reg [136:0] mailbox = 0;
+    reg [145:0] mailbox = 0;
     reg request = 0;
     (* ASYNC_REG="TRUE" *) reg ack_meta = 0, ack_sync = 0;
     (* ASYNC_REG="TRUE" *) reg req_meta = 0, req_sync = 0;
     reg acknowledge = 0;
-    reg [136:0] status = 0;
+    reg [145:0] status = 0;
     always @(posedge clk) begin
         ack_meta <= acknowledge;
         ack_sync <= ack_meta;
         if (request == ack_sync) begin
-            mailbox <= {launch_x,launch_y,launch_vx,launch_vy,orientation,charge,versus,aim_selected,aim_origin,aim_target,aim_speed,cooldown,multiplier, best_score, heart_levels, lives, difficulty, state, combo};
+            mailbox <= {heart_levels[19:12],lives[2],launch_x,launch_y,launch_vx,launch_vy,orientation,charge,versus,aim_selected,aim_origin,aim_target,aim_speed,cooldown,multiplier, best_score, heart_levels[11:0], lives[1:0], difficulty, state, combo};
             request <= ~request;
         end
     end
@@ -52,21 +52,23 @@ module sensei_panel (
     wire [12:0] index;
     wire [ 6:0] x = index % 96;
     wire [ 5:0] y = index / 96;
-    wire [ 1:0] shown_lives = status[13:12], shown_difficulty = status[11:10];
+    wire [2:0] shown_lives={status[137],status[13:12]};
+    wire [1:0] shown_difficulty=status[11:10];
+    wire [19:0] shown_hearts={status[145:138],status[25:14]};
     wire [ 1:0] shown_state = status[9:8];
     wire [ 7:0] shown_combo = status[7:0];
     wire [15:0] shown_best = status[41:26];
     wire [ 2:0] shown_mult = status[44:42];
     reg  [15:0] colour;
-    wire [ 2:0] heart;
+    wire [ 4:0] heart;
     genvar h;
     generate
-        for (h = 0; h < 3; h = h + 1) begin : hearts
+        for (h = 0; h < 5; h = h + 1) begin : hearts
             heart_pixel shape (
-                .x       ({3'b0, x}),
-                .y       ({4'b0, y}),
-                .left    (10'd8 + h * 10'd30),
-                .top     (10'd12),
+                .x       (status[64] ? {2'b0,x,1'b0}:{3'b0,x}),
+                .y       (status[64] ? {3'b0,y,1'b0}:{4'b0,y}),
+                .left    (status[64] ? 10'd96+h*10'd18:10'd4+h*10'd18),
+                .top     (status[64] ? 10'd4:10'd15),
                 .pixel_on(heart[h])
             );
         end
@@ -106,8 +108,8 @@ module sensei_panel (
         if (seam)  colour = 16'h3922;
         if (x < 2 || x >= 94 || y < 2 || y >= 62) colour = 16'hFE45;
         brightness = 0;
-        for (i = 0; i < 3; i = i + 1) begin
-            brightness = status[14+i*4+:4];
+        for (i = 0; i < 5; i = i + 1) begin
+            brightness = shown_hearts[i*4+:4];
             if (heart[i]) colour = {brightness, brightness[3], 11'b0};
         end
         if (t_best)  colour = 16'hFE45;
@@ -120,7 +122,15 @@ module sensei_panel (
       .orientation(status[72:71]),.charge(status[70:65]),.cooldown(status[51:45]),
       .start_x(status[136:121]),.start_y(status[120:105]),.vx(status[104:89]),.vy(status[88:73]),
       .x(x),.y(y),.rgb(versus_colour));
-    wire [15:0] display_colour=status[64] ? versus_colour:colour;
+    reg [15:0] display_colour;
+    integer vh;
+    always @(*) begin
+        display_colour=status[64] ? versus_colour:colour;
+        // Mini hearts in the 1v1 top-right strip; regular panel uses full-size hearts.
+        if(status[64]) for(vh=0;vh<5;vh=vh+1)
+            if(heart[vh] && shown_hearts[vh*4+:4]!=0)
+                display_colour={shown_hearts[vh*4+:4],1'b0,11'b0};
+    end
     assign JB[2] = 0;
     Oled_Display driver (
         .clk           (oled_clk),

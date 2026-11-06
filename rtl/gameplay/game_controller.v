@@ -6,6 +6,7 @@ module game_controller #(
     input              clk,
     input              reset,
     input              start_pressed,
+    input tri0 [2:0] starting_lives,
     input              pause,
     input              effects_busy,
     input              slash_active,
@@ -18,10 +19,11 @@ module game_controller #(
     output             new_round,
     output reg [ 15:0] score = 0,
     output reg [ 15:0] best_score = 0,
-    output reg [  1:0] lives = 3,
+    output reg [  2:0] lives = 3,
     output reg [  7:0] combo = 0,
     output     [  2:0] multiplier
 );
+    wire [2:0] initial_lives=(starting_lives>=1 && starting_lives<=5) ? starting_lives:3'd3;
     // 0 title, 1 playing, 2 paused, 3 game over.
     integer i,j;
     reg [3:0] fruits,losses;
@@ -57,12 +59,12 @@ module game_controller #(
         if (reset) begin
             state <= 0;
             score <= 0;
-            lives <= 3;
+            lives <= initial_lives;
             combo <= 0;
         end else if (new_round) begin
             state <= 1;
             score <= 0;
-            lives <= 3;
+            lives <= initial_lives;
             combo <= 0;
         end else
             case (state)
@@ -80,6 +82,7 @@ module game_controller #(
                 end
                 2: if (!pause) state <= 1;
                 default: begin
+                    if(state==0) lives<=initial_lives;
                 end
             endcase
     end

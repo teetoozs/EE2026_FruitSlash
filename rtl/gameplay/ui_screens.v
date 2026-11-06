@@ -260,6 +260,8 @@ module ui_screens (
     wire hud_panel = x >= 8 && x < 196 && y >= 8 && y < 50;
 
     // Mutually exclusive text rectangles share one glyph/outline datapath.
+    wire [9:0] solo_glyph_x=(x-10'd80)/10'd3;
+    wire [9:0] versus_glyph_x=(x-10'd248)/10'd3;
     reg [4:0] text_region;
     reg [9:0] text_dx, text_dy;
     reg [7:0] text_char;
@@ -392,14 +394,15 @@ module ui_screens (
             text_chars={"BEST ", num5(bs_bcd)};
             text_char=text_chars[(10-1-((x-10'd240)>>4))*8+:8];
         end
-        if(state==2'd0 && x>=10'd64 && x<10'd192 &&
+        // Three-pixel-wide glyph cells keep all menu names spaced and centered.
+        if(state==2'd0 && x>=10'd80 && x<10'd176 &&
            y>=10'd332 && y<10'd368) begin
             text_region=5'd5;
-            text_dx=((x-10'd64)>>2) & 10'd7;
+            text_dx=solo_glyph_x & 10'd7;
             text_dy=(y-10'd332)>>2;
-            text_index=(x-10'd64)>>5;
+            text_index=(solo_glyph_x>>3);
             text_chars="SOLO";
-            text_char=text_chars[(4-1-((x-10'd64)>>5))*8+:8];
+            text_char=text_chars[(4-1-((solo_glyph_x>>3)))*8+:8];
         end
         if(state==2'd0 && x>=10'd64 && x<10'd192 &&
            y>=10'd376 && y<10'd394) begin
@@ -410,14 +413,14 @@ module ui_screens (
             text_chars="1 PLAYER";
             text_char=text_chars[(8-1-((x-10'd64)>>4))*8+:8];
         end
-        if(state==2'd0 && x>=10'd224 && x<10'd416 &&
+        if(state==2'd0 && x>=10'd248 && x<10'd392 &&
            y>=10'd332 && y<10'd368) begin
             text_region=5'd7;
-            text_dx=((x-10'd224)>>2) & 10'd7;
+            text_dx=versus_glyph_x & 10'd7;
             text_dy=(y-10'd332)>>2;
-            text_index=(x-10'd224)>>5;
+            text_index=(versus_glyph_x>>3);
             text_chars="VERSUS";
-            text_char=text_chars[(6-1-((x-10'd224)>>5))*8+:8];
+            text_char=text_chars[(6-1-((versus_glyph_x>>3)))*8+:8];
         end
         if(state==2'd0 && x>=10'd280 && x<10'd360 &&
            y>=10'd376 && y<10'd394) begin
@@ -463,6 +466,16 @@ module ui_screens (
             text_index=(x-10'd168)>>4;
             text_chars="LOWER SW0 TO RESUME";
             text_char=text_chars[(19-1-((x-10'd168)>>4))*8+:8];
+        end
+        // Reuse the pause hint glyph path for the return-to-menu instruction.
+        if(state==2'd2 && x>=10'd160 && x<10'd480 &&
+           y>=10'd314 && y<10'd332) begin
+            text_region=5'd12;
+            text_dx=((x-10'd160)>>1) & 10'd7;
+            text_dy=(y-10'd314)>>1;
+            text_index=(x-10'd160)>>4;
+            text_chars="BTND: RETURN TO MENU";
+            text_char=text_chars[(20-1-((x-10'd160)>>4))*8+:8];
         end
         if(state==2'd3 && x>=10'd32 && x<10'd608 &&
            y>=10'd50 && y<10'd122) begin
@@ -672,6 +685,8 @@ module cursor_settings(
  output menu_busy,
  input [9:0] x,y,cx,cy,px,py,input held,
  output reg [1:0] sensitivity=0,output reg opened=0,
+ output reg [2:0] starting_lives=3,
+ output reg [1:0] difficulty=1,
  output panel_on,output reg [11:0] panel_rgb,
  output reg sword_on,output reg [11:0] sword_rgb
 );
@@ -685,16 +700,25 @@ module cursor_settings(
    .clk(clk),.trigger(blade_event),.x(x),.y(y),.x0(px),.y0(py),.x1(cx),.y1(cy),.pixel(settings_fruit),.hit(button_hover));
  wire settings_cut=!opened && !menu_locked && !menu_busy && held && last_held && (cx!=px || cy!=py) && button_hover;
  wire gain_hover=cx>=176 && cx<464 && cy>=220 && cy<264;
- wire back_hover=cx>=240 && cx<400 && cy>=320 && cy<352;
+ wire lives_hover=cx>=176 && cx<464 && cy>=274 && cy<310;
+ wire back_hover=cx>=240 && cx<400 && cy>=410 && cy<446;
+ wire slider_hover=cx>=200 && cx<=440 && cy>=340 && cy<=370;
+ reg dragging_difficulty=0;
+ wire [9:0] slider_knob=difficulty==0 ? 10'd224:difficulty==2 ? 10'd416:10'd320;
  always @(posedge clk) begin
   last_held<=held;old_cut<=cut_event;old_menu_busy<=menu_locked;
-  if(reset) begin opened<=0;sensitivity<=0;swing<=0;end
+  if(reset) begin opened<=0;sensitivity<=0;starting_lives<=3;difficulty<=1;dragging_difficulty<=0;swing<=0;end
   else begin
+   if(!held || !opened || back || state!=0) dragging_difficulty<=0;
+   else if(click && slider_hover) dragging_difficulty<=1;
+   if(opened && state==0 && held && (dragging_difficulty || (click && slider_hover)))
+    difficulty<=cx<272 ? 2'd0:cx<368 ? 2'd1:2'd2;
    if(back || state!=0) opened<=0;
    else if(settings_done) opened<=1;
    else if(click) begin
     if(opened && back_hover) opened<=0;
     else if(opened && gain_hover) sensitivity<=sensitivity+1'b1;
+    else if(opened && lives_hover) starting_lives<=starting_lives==5 ? 3'd1:starting_lives+1'b1;
    end
    if((cut_event && !old_cut) || (menu_locked && !old_menu_busy) || settings_cut) swing<=7;
    else if(tick && swing!=0) swing<=swing-1'b1;
@@ -704,28 +728,103 @@ module cursor_settings(
  menu_cut_animation settings_animation(.clk(clk),.reset(reset||back||state!=0),.tick(tick),
  .trigger(settings_cut),.cx(10'd512),.cy(10'd280),.colour(12'hD35),.x(x),.y(y),
  .busy(menu_busy),.done(settings_done),.pixel(settings_fx),.rgb(settings_fx_rgb));
- wire title_text,gain_text,back_text,settings_text;
- wire title_edge,gain_edge,back_edge,settings_edge;
- wire [2:0] settings_row;
- wire settings_label_box=x>=416 && x<608 && y>=332 && y<368;
- wire [9:0] settings_text_x=(x-10'd416)/3;
- wire [9:0] settings_text_y=(y-10'd332)>>2;
+ // All labels occupy disjoint regions: share one glyph ROM and outline circuit.
  wire [127:0] gain_label=sensitivity==0 ? "SENSITIVITY 1X  ":
    sensitivity==1 ? "SENSITIVITY 0.5X":sensitivity==2 ? "SENSITIVITY 2X  ":"SENSITIVITY 4X  ";
- fancy_text #(.LEN(8),.K(2),.X0(192),.Y0(140)) settings_title(.x(x),.y(y),.chars("SETTINGS"),.fill(title_text),.edge_on(title_edge),.cidx(),.grow());
- fancy_text #(.LEN(16),.K(1),.X0(192),.Y0(232)) gain_label_text(.x(x),.y(y),.chars(gain_label),.fill(gain_text),.edge_on(gain_edge),.cidx(),.grow());
- fancy_text #(.LEN(4),.K(1),.X0(288),.Y0(326)) back_label(.x(x),.y(y),.chars("BACK"),.fill(back_text),.edge_on(back_edge),.cidx(),.grow());
- // Same outlined menu glyphs; 3x4 scaling fits all eight letters in this column.
- fancy_text #(.LEN(8)) settings_label(.x(settings_text_x),.y(settings_text_y),.chars("SETTINGS"),.fill(settings_text),.edge_on(settings_edge),.cidx(),.grow(settings_row));
- wire settings_box=x>=240 && x<400 && y>=430 && y<454;
+ wire [9:0] settings_glyph_x=(x-10'd416)/10'd3;
+ reg [3:0] label_region,label_index;
+ reg [9:0] label_x,label_y;
+ reg [127:0] label_chars;
+ wire [7:0] label_char=label_chars[127-label_index*8-:8];
+ wire label_fill,label_edge;
+ wire [2:0] settings_row;
+ fancy_text #(1,0,0,0) settings_shared_font(.x(label_x),.y(label_y),.chars(label_char),
+   .fill(label_fill),.edge_on(label_edge),.cidx(),.grow(settings_row));
+ wire settings_label_box=x>=416 && x<608 && y>=332 && y<368;
+ always @(*) begin
+  label_region=0;label_index=0;label_x=0;label_y=0;label_chars=0;
+  if(opened && x>=192 && x<448 && y>=140 && y<176) begin
+   label_region=1;label_x=((x-10'd192)/4) & 10'd7;
+   label_y=(y-10'd140)/4;label_index=(x-10'd192)/32;
+   label_chars={"SETTINGS",64'd0};
+  end
+  if(opened && x>=192 && x<448 && y>=232 && y<250) begin
+   label_region=2;label_x=((x-10'd192)/2) & 10'd7;
+   label_y=(y-10'd232)/2;label_index=(x-10'd192)/16;
+   label_chars=gain_label;
+  end
+  if(opened && x>=288 && x<352 && y>=418 && y<436) begin
+   label_region=3;label_x=((x-10'd288)/2) & 10'd7;
+   label_y=(y-10'd418)/2;label_index=(x-10'd288)/16;
+   label_chars={"BACK",96'd0};
+  end
+  if(!opened && x>=416 && x<608 && y>=332 && y<368) begin
+   label_region=4;label_x=settings_glyph_x & 10'd7;
+   label_y=(y-10'd332)/4;label_index=(settings_glyph_x>>3);
+   label_chars={"SETTINGS",64'd0};
+  end
+  if(opened && x>=264 && x<376 && y>=282 && y<300) begin
+   label_region=5;label_x=((x-10'd264)/2) & 10'd7;
+   label_y=(y-10'd282)/2;label_index=(x-10'd264)/16;
+   label_chars={"LIVES ",8'h30+{5'd0,starting_lives},72'd0};
+  end
+  if(opened && x>=240 && x<400 && y>=316 && y<334) begin
+   label_region=6;label_x=((x-10'd240)/2) & 10'd7;
+   label_y=(y-10'd316)/2;label_index=(x-10'd240)/16;
+   label_chars={"DIFFICULTY",48'd0};
+  end
+  if(opened && x>=192 && x<256 && y>=376 && y<394) begin
+   label_region=7;label_x=((x-10'd192)/2) & 10'd7;
+   label_y=(y-10'd376)/2;label_index=(x-10'd192)/16;
+   label_chars={"EASY",96'd0};
+  end
+  if(opened && x>=272 && x<368 && y>=376 && y<394) begin
+   label_region=8;label_x=((x-10'd272)/2) & 10'd7;
+   label_y=(y-10'd376)/2;label_index=(x-10'd272)/16;
+   label_chars={"MEDIUM",80'd0};
+  end
+  if(opened && x>=384 && x<448 && y>=376 && y<394) begin
+   label_region=9;label_x=((x-10'd384)/2) & 10'd7;
+   label_y=(y-10'd376)/2;label_index=(x-10'd384)/16;
+   label_chars={"HARD",96'd0};
+  end
+ end
+ wire title_text=(label_region==1) && label_fill;
+ wire title_edge=(label_region==1) && label_edge;
+ wire gain_text=(label_region==2) && label_fill;
+ wire gain_edge=(label_region==2) && label_edge;
+ wire back_text=(label_region==3) && label_fill;
+ wire back_edge=(label_region==3) && label_edge;
+ wire settings_text=(label_region==4) && label_fill;
+ wire settings_edge=(label_region==4) && label_edge;
+ wire lives_text=(label_region==5) && label_fill;
+ wire lives_edge=(label_region==5) && label_edge;
+ wire diff_title=(label_region==6) && label_fill;
+ wire diff_edge=(label_region==6) && label_edge;
+ wire easy_text=(label_region==7) && label_fill;
+ wire easy_edge=(label_region==7) && label_edge;
+ wire medium_text=(label_region==8) && label_fill;
+ wire medium_edge=(label_region==8) && label_edge;
+ wire hard_text=(label_region==9) && label_fill;
+ wire hard_edge=(label_region==9) && label_edge;
  assign panel_on=state==0 && (opened || (settings_fruit && !menu_busy) || (settings_label_box && (settings_text || settings_edge)) || settings_fx);
  always @(*) begin
   panel_rgb=12'h321;
   if(opened) begin
    if(x>=176 && x<464 && y>=220 && y<264) panel_rgb=gain_hover ? 12'h963:12'h642;
-   if(x>=240 && x<400 && y>=320 && y<352) panel_rgb=back_hover ? 12'h963:12'h642;
-   if(title_edge || gain_edge || back_edge) panel_rgb=12'h210;
-   if(title_text || gain_text || back_text) panel_rgb=y[2] ? 12'hFC5:12'hFEA;
+   if(x>=240 && x<400 && y>=410 && y<446) panel_rgb=back_hover ? 12'h963:12'h642;
+   if(x>=176 && x<464 && y>=274 && y<310) panel_rgb=lives_hover ? 12'h963:12'h642;
+   if(x>=224 && x<=416 && y>=352 && y<=356) panel_rgb=x<=slider_knob ? 12'hFC5:12'h765;
+   if((x==224 || x==320 || x==416) && y>=348 && y<=360) panel_rgb=12'hFEA;
+   if(x>=slider_knob-6 && x<=slider_knob+6 && y>=344 && y<=364) panel_rgb=12'hFEA;
+   if(x>=slider_knob-3 && x<=slider_knob+3 && y>=347 && y<=361) panel_rgb=12'hD62;
+   if(diff_edge || easy_edge || medium_edge || hard_edge) panel_rgb=12'h210;
+   if(diff_title) panel_rgb=12'hFEA;
+   if(easy_text) panel_rgb=difficulty==0 ? 12'h9F6:12'hA98;
+   if(medium_text) panel_rgb=difficulty==1 ? 12'hFE8:12'hA98;
+   if(hard_text) panel_rgb=difficulty==2 ? 12'hF88:12'hA98;
+   if(title_edge || gain_edge || back_edge || lives_edge) panel_rgb=12'h210;
+   if(title_text || gain_text || back_text || lives_text) panel_rgb=y[2] ? 12'hFC5:12'hFEA;
   end else begin
    panel_rgb=x<512 && y<280 ? 12'hF8A:12'hC24;
    if(settings_fruit && x[2:0]==3 && y[2:0]==3) panel_rgb=12'hFE8;

@@ -1,7 +1,7 @@
 module board_displays (
     input             clk,
     input      [15:0] score,
-    input      [ 1:0] lives,
+    input      [ 2:0] lives,
     input      [ 1:0] state,
     output reg [ 3:0] an,
     output reg [ 7:0] seg,
@@ -11,7 +11,7 @@ module board_displays (
     reg [3:0] digit;
     integer decimal_score;
     always @(posedge clk) scan <= scan + 1'b1;
-    assign led = {10'd0, state, 1'b0, (lives >= 3), (lives >= 2), (lives >= 1)};
+    assign led = {8'd0, state, 1'b0, (lives >= 5), (lives >= 4), (lives >= 3), (lives >= 2), (lives >= 1)};
     always @(*) begin
         decimal_score = (score > 9999) ? 9999 : score;
         digit         = 0;

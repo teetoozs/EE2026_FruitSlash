@@ -11,7 +11,7 @@ module pixel_compositor #(
     input         [     9:0] x,
     input         [     9:0] y,
     input                    video_on,
-    input         [    11:0] heart_levels,
+    input         [    19:0] heart_levels,
     input         [ N*5-1:0] radii,
     input         [ N*2-1:0] health,
     input         [     1:0] state,
@@ -151,16 +151,16 @@ module pixel_compositor #(
             endcase
         end
     endfunction
-    wire [2:0] heart;
+    wire [4:0] heart;
     genvar h;
     generate
-        for (h = 0; h < 3; h = h + 1) begin : hud
+        for (h = 0; h < 5; h = h + 1) begin : hud
             heart_pixel #(
                 .SCALE(1)
             ) shape (
                 .x       (x),
                 .y       (y),
-                .left    (10'd514 + h * 10'd40),
+                .left    (10'd434 + h * 10'd40),
                 .top     (10'd16),
                 .pixel_on(heart[h])
             );
@@ -195,6 +195,8 @@ module pixel_compositor #(
         if(heart[0] && heart_levels[3:0]!=0) rgb={heart_levels[3:0],8'h22};
         if(heart[1] && heart_levels[7:4]!=0) rgb={heart_levels[7:4],8'h22};
         if(heart[2] && heart_levels[11:8]!=0) rgb={heart_levels[11:8],8'h22};
+        if(heart[3] && heart_levels[15:12]!=0) rgb={heart_levels[15:12],8'h22};
+        if(heart[4] && heart_levels[19:16]!=0) rgb={heart_levels[19:16],8'h22};
         if(!video_on) rgb=0;
     end
 endmodule

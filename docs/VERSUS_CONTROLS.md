@@ -17,3 +17,5 @@ Banana is excluded from regular and special fruit selection. Available fruit are
 No synthesis or implementation was run for these changes. Check the new utilization and timing reports when building the bitstream.
 
 There is no throw cooldown in 1v1: tap/release repeatedly for rapid throws, or hold to charge. The existing eight simultaneous object slots still apply; throws while all slots are occupied cannot spawn another object.
+
+Settings now include starting lives (1-5, default 3) and a draggable Easy/Medium/Hard slider. Medium is the default. Movement cadence is 64/80/92 updates per 100 game ticks, giving 80%/100%/115% of the previous default speed. Difficulty affects regular and 1v1 fruit/bomb motion; arc geometry, charge timing, effect timers and spawn interval stay unchanged. The aiming preview shows geometry rather than flight timing. SW1-SW15 remain reserved for aiming.
