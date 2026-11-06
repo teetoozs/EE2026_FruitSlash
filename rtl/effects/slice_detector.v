@@ -4,7 +4,8 @@
 module slice_detector #(
     parameter N = 8,
     parameter VARIABLE_RADIUS = 0,
-    parameter SIZE_SHIFT = 0
+    parameter SIZE_SHIFT = 0,
+    parameter MIN_CUT_DISTANCE = 4
 ) (
     input                 clk,
     input                 reset,
@@ -40,7 +41,9 @@ module slice_detector #(
     wire [7:0] radius = (VARIABLE_RADIUS ? {3'd0,saved_radii[index*5+:5]} : 8'd18) << SIZE_SHIFT;
     wire [15:0] radius_squared = radius * radius;
     reg endpoint = 0;
+    // Reuse the swept-segment length: reject stationary clicks and tiny jitter.
     wire qualifies = saved_active[index] &&
+        length_squared >= MIN_CUT_DISTANCE * MIN_CUT_DISTANCE &&
         (endpoint ? endpoint_distance <= radius_squared :
                     cross_squared <= {14'd0, threshold});
     assign busy = stage != IDLE;

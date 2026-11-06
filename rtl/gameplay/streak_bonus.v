@@ -13,9 +13,10 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
 );
  localparam IDLE=0,FLY=1,ZOOM=2,CUT=3,FALL=4;
  reg [2:0] state=IDLE;
- reg [15:0] random_kind=16'hD351;
- always @(posedge clk) if(reset) random_kind<=16'hD351;
- else random_kind<={random_kind[14:0],random_kind[15]^random_kind[13]^random_kind[12]^random_kind[10]};
+ // Keep special-fruit selection advancing in menus and across round resets.
+ reg [31:0] random_kind=32'h91B7_D351;
+ always @(posedge clk)
+ random_kind<={random_kind[30:0],random_kind[31]^random_kind[21]^random_kind[1]^random_kind[0]};
  reg signed [15:0] velocity_y=0;
  reg [5:0] zoom_age=0;
  reg latched=0,moved=0;
@@ -23,7 +24,7 @@ module streak_bonus #(parameter N=8, parameter TARGET=10, parameter TICKS=300)(
  integer i,cuts;
  reg [3:0] bonus_cuts=0;
  reg [5:0] base_radius=42;
- wire [3:0] chosen_kind=random_kind[3:0]>8 ? random_kind[3:0]-9:random_kind[3:0];
+ wire [3:0] chosen_kind=random_kind[2:0]>=4 ? {1'b0,random_kind[2:0]}+4'd1:{1'b0,random_kind[2:0]};
  wire small_kind=chosen_kind==0 || chosen_kind==2 || chosen_kind==3 || chosen_kind==4;
  assign active=state==ZOOM || state==CUT || state==FALL;
  assign visible=state!=IDLE;

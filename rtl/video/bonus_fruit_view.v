@@ -46,7 +46,7 @@ module bonus_fruit_view(
  wire fruit_pixel=active && correct_half && absx<=radius && absy<=radius &&
                  distance_squared<=radius_squared &&
                  (fruit_type!=4 || inner_squared>=inner_radius_squared) &&
-                 (fruit_type!=6 || dy>=0 || absx<=(radius>>1));
+                 (fruit_type!=6 || dy>=0 || $signed({1'b0,absx})<=($signed({1'b0,radius})>>>2)+(((dy+$signed({1'b0,radius}))*13'sd3)>>>2));
  wire [12:0] burst_x=screen_dx<0 ? -screen_dx:screen_dx;
  wire [12:0] burst_y=dy<0 ? -dy:dy;
  wire [12:0] travel=13'd8+{3'd0,fall_age,3'b0};

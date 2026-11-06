@@ -705,15 +705,20 @@ module cursor_settings(
  .trigger(settings_cut),.cx(10'd512),.cy(10'd280),.colour(12'hD35),.x(x),.y(y),
  .busy(menu_busy),.done(settings_done),.pixel(settings_fx),.rgb(settings_fx_rgb));
  wire title_text,gain_text,back_text,settings_text;
- wire title_edge,gain_edge,back_edge;
+ wire title_edge,gain_edge,back_edge,settings_edge;
+ wire [2:0] settings_row;
+ wire settings_label_box=x>=416 && x<608 && y>=332 && y<368;
+ wire [9:0] settings_text_x=(x-10'd416)/3;
+ wire [9:0] settings_text_y=(y-10'd332)>>2;
  wire [127:0] gain_label=sensitivity==0 ? "SENSITIVITY 1X  ":
    sensitivity==1 ? "SENSITIVITY 0.5X":sensitivity==2 ? "SENSITIVITY 2X  ":"SENSITIVITY 4X  ";
  fancy_text #(.LEN(8),.K(2),.X0(192),.Y0(140)) settings_title(.x(x),.y(y),.chars("SETTINGS"),.fill(title_text),.edge_on(title_edge),.cidx(),.grow());
  fancy_text #(.LEN(16),.K(1),.X0(192),.Y0(232)) gain_label_text(.x(x),.y(y),.chars(gain_label),.fill(gain_text),.edge_on(gain_edge),.cidx(),.grow());
  fancy_text #(.LEN(4),.K(1),.X0(288),.Y0(326)) back_label(.x(x),.y(y),.chars("BACK"),.fill(back_text),.edge_on(back_edge),.cidx(),.grow());
- text_line #(.LEN(8),.K(1),.X0(448),.Y0(340)) settings_label(.x(x),.y(y),.chars("SETTINGS"),.on(settings_text));
+ // Same outlined menu glyphs; 3x4 scaling fits all eight letters in this column.
+ fancy_text #(.LEN(8)) settings_label(.x(settings_text_x),.y(settings_text_y),.chars("SETTINGS"),.fill(settings_text),.edge_on(settings_edge),.cidx(),.grow(settings_row));
  wire settings_box=x>=240 && x<400 && y>=430 && y<454;
- assign panel_on=state==0 && (opened || (settings_fruit && !menu_busy) || settings_text || settings_fx);
+ assign panel_on=state==0 && (opened || (settings_fruit && !menu_busy) || (settings_label_box && (settings_text || settings_edge)) || settings_fx);
  always @(*) begin
   panel_rgb=12'h321;
   if(opened) begin
@@ -724,7 +729,8 @@ module cursor_settings(
   end else begin
    panel_rgb=x<512 && y<280 ? 12'hF8A:12'hC24;
    if(settings_fruit && x[2:0]==3 && y[2:0]==3) panel_rgb=12'hFE8;
-   if(settings_text) panel_rgb=12'hFEA;
+   if(settings_label_box && settings_edge) panel_rgb=12'h210;
+   if(settings_label_box && settings_text) panel_rgb=settings_row<2 ? 12'hC8F:settings_row<5 ? 12'h94E:12'h62B;
    if(settings_fx) panel_rgb=settings_fx_rgb;
   end
  end
